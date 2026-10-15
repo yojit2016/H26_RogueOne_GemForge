@@ -107,7 +107,10 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
             className="font-mono text-xs"
           />
           <p className="text-[11px] text-[var(--muted-foreground)]">
-            Reads manifests (<code className="font-semibold text-[var(--foreground)]">pyproject.toml</code>, <code className="font-semibold text-[var(--foreground)]">requirements.txt</code>) and parses Python source files without executing repository code.
+            Path is read by the local FastAPI backend. The fork includes
+            <code className="font-semibold text-[var(--foreground)]"> targets/LinkWatch</code>
+            as a default live scan target. Manifests and Python source are inspected
+            without executing repository code.
           </p>
         </div>
 

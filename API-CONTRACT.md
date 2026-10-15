@@ -1,9 +1,8 @@
 # GemForge backend contract for the dashboard
 
-Backend development is on `main`. Antigravity owns the independent
-`feat/gemforge-dashboard` worktree. These changes do not edit frontend files or
-operate on that branch. Coordinate integration through this contract and the
-running backend's OpenAPI schema at `http://127.0.0.1:8000/openapi.json`.
+The dashboard and backend are integrated in the local submission branch. The
+frontend uses the same-origin Vite development proxy and the running backend's
+OpenAPI schema at `http://127.0.0.1:8000/openapi.json`.
 
 Run `.venv/Scripts/python.exe -m uvicorn gemforge.api:app --host 127.0.0.1 --port 8000`.
 The existing Vite development proxy exposes these backend routes under `/api`.
@@ -52,8 +51,9 @@ rejected with HTTP 400. Importing performs no inference, source writes or target
 execution. It restores reported evidence; it does not independently attest that
 user-supplied test logs are genuine.
 
-Use this route to demonstrate the existing `capsules/linkwatch-phase3.json` result
-after backend restart. Do not rerun `/verify` just to populate the dashboard.
+Use this route to demonstrate the preserved
+`evidence/linkwatch/linkwatch-phase3.json` result after backend restart. Do not
+rerun `/verify` just to populate the dashboard.
 The cache still retains only the latest 20 capsules; restart/eviction yields 404.
 Existing downloaded files remain the durable evidence.
 

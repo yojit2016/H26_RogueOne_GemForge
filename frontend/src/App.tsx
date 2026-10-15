@@ -16,7 +16,7 @@ export default function App() {
   const [activePage, setActivePage] = useState<ActivePage>("overview")
   // In development, initialize with the authentic LinkWatch Phase 3 fixture for immediate rich dashboard review
   const [capsule, setCapsule] = useState<ExitCapsule | null>(LINKWATCH_DEMO_CAPSULE)
-  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | undefined>("linkwatch-phase3")
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | undefined>()
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true)
 
   // Modals
@@ -26,7 +26,7 @@ export default function App() {
 
   // Preselected verification items
   const [selectedVerifyDep, setSelectedVerifyDep] = useState<string>("pydantic")
-  const [selectedVerifyTarget, setSelectedVerifyTarget] = useState<string>("pydantic>=2")
+  const [selectedVerifyTarget, setSelectedVerifyTarget] = useState<string>("pydantic>=2,<3")
 
   // Backend connection
   const [backendHealth, setBackendHealth] = useState<HealthResponse | null>(null)
@@ -58,7 +58,7 @@ export default function App() {
       setIsDemoMode(false)
     } else {
       setCapsule(LINKWATCH_DEMO_CAPSULE)
-      setCurrentAnalysisId("linkwatch-phase3")
+      setCurrentAnalysisId(undefined)
       setIsDemoMode(true)
     }
   }
@@ -147,7 +147,7 @@ export default function App() {
         open={scanModalOpen}
         onClose={() => setScanModalOpen(false)}
         onSuccess={handleScanSuccess}
-        defaultPath={capsule?.repository || ""}
+        defaultPath={isDemoMode ? "targets/LinkWatch" : capsule?.repository || ""}
       />
 
       {capsule && (
@@ -155,7 +155,7 @@ export default function App() {
           open={verificationModalOpen}
           onClose={() => setVerificationModalOpen(false)}
           onSuccess={handleVerificationSuccess}
-          currentRepoPath={capsule.repository}
+          currentRepoPath={isDemoMode ? "targets/LinkWatch" : capsule.repository}
           currentAnalysisId={currentAnalysisId}
           dependencies={Array.from(new Set(capsule.dependencies.map((d) => d.package)))}
           defaultDependency={selectedVerifyDep}

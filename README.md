@@ -9,14 +9,16 @@ then exports a versioned **Dependency Exit Capsule** with evidence and limits.
 Optional hosted Gemma 4 analysis adds migration hypotheses; it does not replace
 observed facts or prove compatibility.
 
-The final intended submission name is `H26_RogueOne_GemForge`. This checkout is
-still a local development repository, not the approved public submission fork.
-Starter-fork provenance remains unresolved; see [SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md).
+The required public repository is
+[yojit2016/H26_RogueOne_GemForge](https://github.com/yojit2016/H26_RogueOne_GemForge),
+a genuine fork of `rishrek/LinkWatch`. Local integration commits are not pushed;
+the public fork still points to its original LinkWatch commit. See
+[SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md) for current readiness.
 
-Open `GemForge.code-workspace` for development. GemForge is the root repository;
-the ignored `.dist/LinkWatch` clone is only a scan target. Workspace settings keep
-that clone out of automatic Source Control discovery. See [REPOSITORIES.md](REPOSITORIES.md)
-for repository boundaries and the starter-fork requirement.
+Open `GemForge.code-workspace` for development. GemForge lives at the repository
+root; the complete, history-preserving LinkWatch source tree is at
+`targets/LinkWatch/` and is analyzed dynamically. See
+[REPOSITORIES.md](REPOSITORIES.md) for repository boundaries.
 
 ## Problem and approach
 
@@ -68,8 +70,8 @@ not a universal safety verdict.
 - **Hosted inference (optional):** Google GenAI Python SDK (`google-genai`) and
   `python-dotenv`; no local model runtime is required.
 - **Frontend:** React, TypeScript and Vite, using Node.js 22.12+ (Node 24 also
-  works). The in-progress dashboard is maintained in its separate frontend
-  worktree and is not claimed as integrated in this backend checkout.
+  works). The dashboard branch is integrated locally; its original feature
+  commits remain in history.
 - **Validation:** pytest and Ruff.
 
 ## Setup
@@ -108,16 +110,16 @@ analysis is recorded in `limitations`. Risks do not change the exit code.
 
 ```powershell
 # Analyze the repository offline (no hosted request):
-.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --json
+.venv/Scripts/gemforge.exe analyze targets/LinkWatch --json
 
 # Request the hosted Gemma 4 analysis; review public-data disclosure first:
-.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --ai --allow-hosted --json --import-map dateutil=python-dateutil
+.venv/Scripts/gemforge.exe analyze targets/LinkWatch --ai --allow-hosted --json --import-map dateutil=python-dateutil
 
 # Preview a manifest-only verification plan; execution needs separate consent:
-.venv/Scripts/gemforge.exe verify .dist/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
+.venv/Scripts/gemforge.exe verify targets/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
 
 # Preview repair evidence offline from a saved regression capsule:
-.venv/Scripts/gemforge.exe repair capsules/linkwatch-phase3.json --dependency pydantic --json
+.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --json
 ```
 
 `verify` without `--confirm-execution` is a preview and does not run the target.
@@ -152,15 +154,20 @@ inspect `ai_status`, recommendations and inference errors to determine AI succes
 
 ## LinkWatch demo
 
-LinkWatch is the confirmed analysis target; whether it is also the required
-starter repository to fork remains unconfirmed:
-https://github.com/rishrek/LinkWatch. Keep its checkout and history separate.
-No target scripts or tests are run by scanning.
+LinkWatch is both the confirmed starter-fork parent and the analysis target:
+https://github.com/rishrek/LinkWatch. The fork's original commit is retained in
+history, and all original source, tests, manifests and license are preserved under
+`targets/LinkWatch/`. No target scripts or tests are run by scanning.
 
 ```powershell
-git clone https://github.com/rishrek/LinkWatch .dist/LinkWatch
-.venv/Scripts/gemforge.exe scan .dist/LinkWatch --json --import-map dateutil=python-dateutil --output capsules/linkwatch.json --markdown capsules/linkwatch.md
+.venv/Scripts/gemforge.exe scan targets/LinkWatch --json --import-map dateutil=python-dateutil --output capsules/linkwatch.json --markdown capsules/linkwatch.md
 ```
+
+The API and dashboard also accept an arbitrary local repository path; the
+frontend's live scan submits that path to FastAPI. Its bundled LinkWatch capsule
+is a demo fixture only, not a substitute for scanning the included target. In
+demo mode, the Scan dialog defaults to `targets/LinkWatch`; submitting it calls
+the local API, which reads the selected repository path dynamically.
 
 Observed manifests declare `pydantic==1.10.13` in requirements.txt and
 `pydantic>=2` in pyproject.toml. The generic scanner detects this conflict from files;
@@ -190,12 +197,20 @@ engineer-reviewed one-line configuration-key replacement is documented in
 unapplied, and not a Gemma-generated suggestion**. No repaired code or test pass
 is claimed. The independent report failure must not be attributed to Pydantic.
 
-The full Python suite was rerun for this audit:
-`.venv/Scripts/python.exe -m pytest -q --basetemp .dist/pytest-submission-audit`
-reported **152 passed**. It emitted two warnings: the existing Starlette/httpx
-test-client deprecation and a pytest cache-directory access warning from this
-Windows environment. This is test-suite evidence, not a LinkWatch compatibility
-claim.
+In the integrated checkout, `.venv/Scripts/python.exe -m pytest -q` reported
+**152 passed, 1 warning** (the Starlette/httpx test-client deprecation). Ruff
+passes for GemForge's `src` and `tests`. A repository-wide `ruff check .` reports
+13 pre-existing lint findings confined to unchanged `targets/LinkWatch/`; these
+were not silently fixed in the imported upstream source. `npm.cmd ci` succeeded
+with zero reported vulnerabilities and `npm.cmd run build` passed TypeScript
+and the Vite production build. These are project build/test results, not a claim
+that LinkWatch's own tests or candidate dependency migration passed.
+
+A fresh dynamic static scan of `targets/LinkWatch/` also reproduced the known
+manifest conflict: 26 declarations, 14 normalized packages, 22 usage locations,
+one proven Pydantic `constraint_conflict`, and `verification:not_run`. The scan
+read manifests and source without executing LinkWatch or making a hosted AI
+request.
 
 ## Contracts and limitations
 
@@ -251,9 +266,9 @@ did not succeed (see the verified results above).
 ```powershell
 # Once only: copy the template, then edit .env locally to set GEMINI_API_KEY.
 Copy-Item .env.example .env
-.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --ai --allow-hosted --json --import-map dateutil=python-dateutil
+.venv/Scripts/gemforge.exe analyze targets/LinkWatch --ai --allow-hosted --json --import-map dateutil=python-dateutil
 # Optional new-file exports:
-.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --ai --allow-hosted --output capsules/ai.json --markdown capsules/ai.md
+.venv/Scripts/gemforge.exe analyze targets/LinkWatch --ai --allow-hosted --output capsules/ai.json --markdown capsules/ai.md
 ```
 
 Keep the key local; never paste it into an issue or commit it. `.env` is ignored.
@@ -315,7 +330,7 @@ bounded retry. See `GEMMA-DIAGNOSTICS.md` and `PHASE2-VALIDATION.md` for actual 
 Preview a plan first; this executes no target code and installs nothing:
 
 ```powershell
-.venv/Scripts/gemforge.exe verify .dist/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
+.venv/Scripts/gemforge.exe verify targets/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
 ```
 
 After reviewing the repository, dependencies, tests and probes, an explicit
@@ -327,7 +342,7 @@ The one approved demonstration uses this command shape:
 
 ```powershell
 # This command performs a NEW run; it is not needed to read existing evidence.
-.venv/Scripts/gemforge.exe verify .dist/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --analysis .dist/linkwatch-gemma-d-1.json --import-module linkwatch.config --probe-file examples/linkwatch-pydantic-probes.json --confirm-execution --timeout 60 --install-timeout 180 --output capsules/verification.json --markdown capsules/verification.md
+.venv/Scripts/gemforge.exe verify targets/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config --probe-file examples/linkwatch-pydantic-probes.json --confirm-execution --timeout 60 --install-timeout 180 --output capsules/verification.json --markdown capsules/verification.md
 ```
 
 `--analysis` retains a matching previous capsule's AI provenance without making
@@ -378,9 +393,9 @@ Use the preserved regression capsule to preview repair evidence without network
 requests, installations, source changes or target-code execution:
 
 ```powershell
-.venv/Scripts/gemforge.exe repair capsules/linkwatch-phase3.json --dependency pydantic --json
+.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --json
 # Real hosted suggestion, saved to NEW files:
-.venv/Scripts/gemforge.exe repair capsules/linkwatch-phase3.json --dependency pydantic --ai --allow-hosted --output capsules/repair-new.json --markdown capsules/repair-new.md
+.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --ai --allow-hosted --output capsules/repair-new.json --markdown capsules/repair-new.md
 ```
 
 The shared engine sends selected matched source excerpts, actual probe results,
@@ -398,7 +413,10 @@ For the dashboard, `POST /analyses/import` restores a saved capsule without a re
 `GET /analyses/{id}/verification` exposes typed actual probe values, and
 `POST /repairs` creates a separate suggestion capsule. Existing routes are retained.
 See [API-CONTRACT.md](API-CONTRACT.md) for schemas, examples and result semantics.
-Frontend work remains independently owned by Antigravity in its dashboard worktree.
+The Antigravity dashboard branch is integrated locally; its original commits
+remain reachable in the submission history. See
+[FRONTEND-INTEGRATION.md](FRONTEND-INTEGRATION.md) for the integrated frontend/API
+contract. The included dashboard fixture is not a fresh analysis.
 
 The first genuine hosted repair request confirmed model access but exhausted two
 generation attempts with HTTP 504 `DEADLINE_EXCEEDED`; its repair capsule records
@@ -413,9 +431,9 @@ request shapes, capsule import flow, typed verification details, exports and
 error handling. It summarizes [API-CONTRACT.md](API-CONTRACT.md), the backend
 contract source of truth.
 
-The submission gate is not yet complete: the approved starter fork and public
-submission repository are absent, and no six-slide deck or rehearsed live
-demonstration was found in this checkout. See [SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md)
+The local integration is based on the confirmed public fork, but these
+integration commits have not been pushed. A six-slide deck is not tracked, and
+a live demo rehearsal is not verified. See [SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md)
 for the checklist and evidence status.
 
 ## Remaining work / Phase 4
@@ -432,6 +450,6 @@ for the checklist and evidence status.
 MIT licensed; see [LICENSE](LICENSE). Submission metadata is recorded in
 `[tool.gemforge.submission]` in `pyproject.toml`; it is declarative metadata, not
 a publishing integration. The final repository must be public and named
-`H26_RogueOne_GemForge`. Creation and pushing remain disabled pending
-confirmation of the official starter-fork requirement. The local folder remains
-`GemForge`; no organizer fork history was present initially.
+`H26_RogueOne_GemForge`. The local integration branch is
+`submission/integration`; it retains the original LinkWatch fork ancestry and
+GemForge history. Do not push until the owner has reviewed the integration report.

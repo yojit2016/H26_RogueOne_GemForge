@@ -123,3 +123,29 @@ Hosted inference permission does not expand target-code execution consent: the
 single approved Phase 3 comparison is complete, and its saved evidence can be
 read/exported without repeating the run. Changed checks or source migrations
 require an execution scope appropriate to those changes.
+
+## 15 October 2026 integration status
+
+The pending starter details above were accurate at the time they were written
+and are superseded by the organizer's subsequent confirmation that
+`rishrek/LinkWatch` is the required starter. A separate clone of the genuine
+GitHub fork `yojit2016/H26_RogueOne_GemForge` is being prepared on the local
+`submission/integration` branch. The original development repository, its
+worktrees and `.dist/LinkWatch` remain untouched. No integrated application
+commit has been pushed.
+
+The local `submission/integration` branch preserves the LinkWatch fork parent
+`f52f3930c8e7c33d934ccf614955a38e26984bd5`, relocates the unchanged upstream
+source tree to `targets/LinkWatch/` in commit
+`8cd30917b68cc2df944074890163bfa23c28ff38`, and merges the GemForge histories
+in commit `3e629d3fa79e9af4b710385c0dee07a59bf84cee`.
+The frontend and documentation histories are combined in `4d696702487e99d0629ce736890d3ddeb637253e`.
+The original branch tips `5163689` (`main`), `2b8956c` (frontend), and `aeaba86`
+(documentation) remain reachable. Review the final audit before any ordinary
+push; do not force-push or rewrite history.
+
+For the integrated checkout, use `targets/LinkWatch/` for fresh dynamic scans.
+The four previously generated Phase 3/repair JSON and Markdown capsules are
+preserved byte-for-byte under `evidence/linkwatch/`. Their recorded repository
+and temporary-environment paths refer to the original local checkout; they are
+historical evidence, not claims that those temporary directories are included.
