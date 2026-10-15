@@ -302,6 +302,8 @@ class ExitCapsule(Schema):
     schema_version: Literal["1.0"] = "1.0"
     generated_at: datetime
     repository: str
+    source_commit: str | None = Field(default=None, pattern=r"^[0-9a-f]{40}$")
+    import_map: dict[str, str] = Field(default_factory=dict)
     dependencies: list[Dependency]
     risks: list[DetectedRisk]
     constraints: list[ConstraintAssessment]

@@ -11,7 +11,16 @@ def capsule_markdown(capsule: ExitCapsule) -> str:
         "# Dependency Exit Capsule",
         "",
         f"Repository: `{capsule.repository}`",
+        f"Source commit: `{capsule.source_commit or 'local/unpinned'}`",
         f"Generated: {capsule.generated_at.isoformat()}",
+        "",
+        "## Import mappings",
+        "",
+    ]
+    lines.extend(f"- `{module}` → `{package}`" for module, package in capsule.import_map.items())
+    if not capsule.import_map:
+        lines.append("No custom import mappings.")
+    lines += [
         "",
         "## Dependencies",
         "",

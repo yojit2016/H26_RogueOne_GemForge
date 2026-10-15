@@ -41,12 +41,15 @@ def scan_repository(path: str | Path, import_map: dict[str, str] | None = None) 
             "No supported dependency declarations found; this is not evidence of safety."
         )
     constraints, risks = detect_risks(dependencies)
+    normalized_import_map = {
+        module: canonicalize_name(package) for module, package in (import_map or {}).items()
+    }
     usages = map_usages(
         root,
         files,
         dependencies,
         limitations,
-        {k: canonicalize_name(v) for k, v in (import_map or {}).items()},
+        normalized_import_map,
     )
     recommendations = [
         AIRecommendation(
@@ -60,6 +63,7 @@ def scan_repository(path: str | Path, import_map: dict[str, str] | None = None) 
     return ExitCapsule(
         generated_at=datetime.now(UTC),
         repository=str(root),
+        import_map=normalized_import_map,
         dependencies=dependencies,
         constraints=constraints,
         risks=risks,

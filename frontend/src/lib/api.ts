@@ -99,9 +99,6 @@ export const api = {
    * Requires explicit confirm_execution = true.
    */
   async verify(req: VerificationRequest): Promise<AnalysisResponse> {
-    if (!req.confirm_execution) {
-      throw new ApiError("Verification requires explicit user consent to execute code in isolated virtual environments.", 400)
-    }
     return request<AnalysisResponse>("/api/verify", {
       method: "POST",
       body: JSON.stringify(req),
@@ -152,4 +149,3 @@ export const api = {
     return `/api/analyses/${encodeURIComponent(id)}/export?format=${format}`
   },
 }
-

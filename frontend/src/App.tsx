@@ -18,6 +18,9 @@ export default function App() {
   const [capsule, setCapsule] = useState<ExitCapsule | null>(LINKWATCH_DEMO_CAPSULE)
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | undefined>()
   const [isDemoMode, setIsDemoMode] = useState<boolean>(true)
+  const [isHistorical, setIsHistorical] = useState<boolean>(false)
+  const [migrationBusy, setMigrationBusy] = useState(false)
+  const [migrationError, setMigrationError] = useState<string | null>(null)
 
   // Modals
   const [scanModalOpen, setScanModalOpen] = useState(false)
@@ -56,17 +59,24 @@ export default function App() {
       setCapsule(null)
       setCurrentAnalysisId(undefined)
       setIsDemoMode(false)
+      setIsHistorical(false)
     } else {
       setCapsule(LINKWATCH_DEMO_CAPSULE)
       setCurrentAnalysisId(undefined)
       setIsDemoMode(true)
+      setIsHistorical(false)
     }
   }
 
-  const handleScanSuccess = (newCapsule: ExitCapsule, analysisId?: string) => {
+  const handleScanSuccess = (
+    newCapsule: ExitCapsule,
+    analysisId?: string,
+    historical = false,
+  ) => {
     setCapsule(newCapsule)
     setCurrentAnalysisId(analysisId)
     setIsDemoMode(false)
+    setIsHistorical(historical)
     setActivePage("overview")
   }
 
@@ -74,7 +84,31 @@ export default function App() {
     setCapsule(updatedCapsule)
     setCurrentAnalysisId(analysisId)
     setIsDemoMode(false)
+    setIsHistorical(false)
     setActivePage("verification")
+  }
+
+  const handleRequestMigration = async (allowHosted: boolean) => {
+    if (!capsule || !allowHosted) return
+    setMigrationBusy(true)
+    setMigrationError(null)
+    try {
+      const response = await api.analyze({
+        path: capsule.repository,
+        source_commit: capsule.source_commit,
+        ai: true,
+        allow_hosted: true,
+        import_map: capsule.import_map ?? {},
+      })
+      setCapsule(response.capsule)
+      setCurrentAnalysisId(response.id)
+      setIsDemoMode(false)
+      setIsHistorical(false)
+    } catch (error) {
+      setMigrationError(error instanceof Error ? error.message : "Gemma 4 analysis failed.")
+    } finally {
+      setMigrationBusy(false)
+    }
   }
 
   const handleSendToVerification = (pkg: string, target?: string) => {
@@ -101,6 +135,13 @@ export default function App() {
 
       {/* Main Workspace Canvas */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6">
+        {(isHistorical || isDemoMode) && (
+          <div className="mb-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-3 text-xs text-[var(--status-warning-text)]">
+            {isDemoMode
+              ? "Historical LinkWatch demonstration fixture. These results are from a previous run, not a live repository scan."
+              : "Historical imported capsule. Its recorded results are from a previous run; importing did not rescan, rerun inference, or repeat verification."}
+          </div>
+        )}
         {activePage === "overview" && (
           <OverviewPage
             capsule={capsule}
@@ -122,8 +163,12 @@ export default function App() {
         {activePage === "migration" && (
           <MigrationIntelligencePage
             capsule={capsule}
+            isDemo={isDemoMode}
             onNavigate={setActivePage}
             onSendToVerification={handleSendToVerification}
+            onRequestAI={handleRequestMigration}
+            requestBusy={migrationBusy}
+            requestError={migrationError}
           />
         )}
 
@@ -158,6 +203,7 @@ export default function App() {
           currentRepoPath={isDemoMode ? "targets/LinkWatch" : capsule.repository}
           currentAnalysisId={currentAnalysisId}
           dependencies={Array.from(new Set(capsule.dependencies.map((d) => d.package)))}
+          sourceCommit={capsule.source_commit}
           defaultDependency={selectedVerifyDep}
           defaultTarget={selectedVerifyTarget}
         />

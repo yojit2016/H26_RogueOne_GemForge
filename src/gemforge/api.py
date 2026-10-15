@@ -1,7 +1,6 @@
 """Local trusted API; scan is read-only, verification requires explicit consent."""
 
 from collections import OrderedDict
-from pathlib import Path
 from threading import Lock
 from typing import Literal
 from uuid import uuid4
@@ -14,6 +13,7 @@ from .analysis import analyze_repository
 from .engine import scan_repository
 from .exporters import capsule_markdown
 from .repairs import suggest_repair
+from .repositories import open_repository
 from .schemas import ExitCapsule, ModelProbe, Schema, VerificationView
 from .verification import verify_repository
 from .verification_views import verification_view
@@ -25,6 +25,7 @@ _analysis_lock = Lock()
 
 class ScanRequest(Schema):
     path: str = Field(min_length=1)
+    source_commit: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{40}$")
     import_map: dict[str, str] = Field(default_factory=dict)
 
 
@@ -41,6 +42,7 @@ class AnalysisResponse(Schema):
 
 class VerificationRequest(Schema):
     path: str = Field(min_length=1)
+    source_commit: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{40}$")
     dependency: str = Field(min_length=1)
     target: str | None = None
     analysis_id: str | None = None
@@ -75,7 +77,11 @@ def health() -> dict[str, str]:
 @app.post("/scan", response_model=ExitCapsule)
 def scan(request: ScanRequest) -> ExitCapsule:
     try:
-        return scan_repository(Path(request.path), request.import_map)
+        with open_repository(request.path, revision=request.source_commit) as source:
+            capsule = scan_repository(source.path, request.import_map)
+            capsule.repository = source.repository
+            capsule.source_commit = source.commit
+            return capsule
     except (OSError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -84,13 +90,16 @@ def scan(request: ScanRequest) -> ExitCapsule:
 def analyze(request: AnalysisRequest) -> AnalysisResponse:
     """Synchronous analysis; retain only the last 20 capsules in process memory."""
     try:
-        capsule = analyze_repository(
-            request.path,
-            ai=request.ai,
-            allow_hosted=request.allow_hosted,
-            import_map=request.import_map,
-            max_ai_packages=request.max_ai_packages,
-        )
+        with open_repository(request.path, revision=request.source_commit) as source:
+            capsule = analyze_repository(
+                source.path,
+                ai=request.ai,
+                allow_hosted=request.allow_hosted,
+                import_map=request.import_map,
+                max_ai_packages=request.max_ai_packages,
+            )
+            capsule.repository = source.repository
+            capsule.source_commit = source.commit
     except (OSError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return store_analysis(capsule)
@@ -101,17 +110,21 @@ def verify(request: VerificationRequest) -> AnalysisResponse:
     """Local trusted use only. Consent is required to execute target code."""
     prior = get_analysis(request.analysis_id) if request.analysis_id else None
     try:
-        capsule = verify_repository(
-            request.path,
-            request.dependency,
-            request.target,
-            analysis=prior,
-            confirm_execution=request.confirm_execution,
-            probes=request.probes,
-            import_module=request.import_module,
-            timeout=request.timeout,
-            install_timeout=request.install_timeout,
-        )
+        revision = request.source_commit or (prior.source_commit if prior else None)
+        with open_repository(request.path, revision=revision) as source:
+            capsule = verify_repository(
+                source.path,
+                request.dependency,
+                request.target,
+                analysis=prior,
+                confirm_execution=request.confirm_execution,
+                probes=request.probes,
+                import_module=request.import_module,
+                timeout=request.timeout,
+                install_timeout=request.install_timeout,
+                source_repository=source.repository,
+                source_commit=source.commit,
+            )
     except (OSError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return store_analysis(capsule)
@@ -146,9 +159,14 @@ def repair(request: RepairRequest) -> AnalysisResponse:
     """Create a new unverified suggestion capsule, preserving its parent result."""
     parent = get_analysis(request.analysis_id)
     try:
-        capsule = suggest_repair(
-            parent, request.dependency, ai=request.ai, allow_hosted=request.allow_hosted
-        )
+        with open_repository(parent.repository, revision=parent.source_commit) as source:
+            capsule = suggest_repair(
+                parent,
+                request.dependency,
+                ai=request.ai,
+                allow_hosted=request.allow_hosted,
+                repository_path=source.path,
+            )
     except (OSError, ValueError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return store_analysis(capsule)

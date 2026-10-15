@@ -248,14 +248,25 @@ def verify_repository(
     timeout: int = 60,
     install_timeout: int = 180,
     work_parent: Path | None = None,
+    source_repository: str | None = None,
+    source_commit: str | None = None,
 ) -> ExitCapsule:
     root = Path(path).expanduser().resolve(strict=True)
     fresh = scan_repository(root)
+    fresh.repository = source_repository or fresh.repository
+    fresh.source_commit = source_commit
     if analysis and (
-        Path(analysis.repository).resolve() != root or analysis.dependencies != fresh.dependencies
+        analysis.repository != fresh.repository
+        or (
+            analysis.source_commit is not None
+            and analysis.source_commit != fresh.source_commit
+        )
+        or analysis.dependencies != fresh.dependencies
     ):
         raise ValueError("Analysis capsule does not match current repository declarations.")
     capsule = analysis.model_copy(deep=True) if analysis else fresh
+    capsule.repository = fresh.repository
+    capsule.source_commit = fresh.source_commit
     dependency = canonicalize_name(dependency)
     plan = prepare_migration(root, dependency, target, capsule)
     module = import_module or dependency.replace("-", "_")

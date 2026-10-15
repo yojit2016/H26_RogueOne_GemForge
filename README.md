@@ -135,15 +135,17 @@ npm.cmd ci
 npm.cmd run dev
 ```
 
-Open http://127.0.0.1:5173. The minimal React/TypeScript UI scans an explicit local
-path through Vite's `/api` proxy. API docs: http://127.0.0.1:8000/docs.
-`POST /scan` accepts `{"path":"C:/path/to/repo","import_map":{}}` and returns a capsule.
+Open http://127.0.0.1:5173. The React/TypeScript dashboard scans an explicit local
+path or public GitHub HTTPS repository through Vite's `/api` proxy. API docs:
+http://127.0.0.1:8000/docs. `POST /scan` accepts
+`{"path":"https://github.com/rishrek/LinkWatch","import_map":{}}` or a local
+directory and returns a capsule.
 `GET /health` reports backend availability. `npm.cmd run build` typechecks and builds.
 The production frontend needs a same-origin `/api` reverse proxy; the Vite proxy is
 development-only. Keep this unauthenticated local filesystem API bound to loopback;
 remote hosting/authentication is outside the current implementation.
 
-`POST /analyze` accepts the scan fields plus `ai` (default false), `allow_hosted`
+`POST /analyze` accepts the scan fields plus optional `source_commit`, `ai` (default false), `allow_hosted`
 (default false), and `max_ai_packages` (default 10, range 1–50). It completes
 synchronously and returns `{ "id": "...", "capsule": {...} }` with HTTP 201.
 `GET /analyses/{id}` retrieves it; `GET /analyses/{id}/export?format=json` or
@@ -151,6 +153,15 @@ synchronously and returns `{ "id": "...", "capsule": {...} }` with HTTP 201.
 are held in process memory; restart/eviction returns 404. Hosted inference can make
 this synchronous request slow. An HTTP 201 means an analysis capsule was created;
 inspect `ai_status`, recommendations and inference errors to determine AI success.
+For GitHub inputs, the backend shallow-checks out a temporary copy without hooks
+or submodules, records the checked-out commit in `source_commit`, and cleans the
+copy after the request. Checkouts time out after 120 seconds and are capped at
+20,000 files/100 MiB of checked-out source. The dashboard scans offline first;
+hosted Gemma analysis is a separate action requiring explicit data-sharing consent.
+Capsules retain the import map so follow-up analysis uses the same usage mappings.
+Verification first returns a manifest-only plan for review, then requires a second
+explicit consent before it installs dependencies or executes repository tests.
+Virtual environments are not a security sandbox.
 
 ## LinkWatch demo
 
@@ -164,7 +175,7 @@ history, and all original source, tests, manifests and license are preserved und
 ```
 
 The API and dashboard also accept an arbitrary local repository path; the
-frontend's live scan submits that path to FastAPI. Its bundled LinkWatch capsule
+frontend's scan submits that path (or the public URL) to FastAPI. Its bundled LinkWatch capsule
 is a demo fixture only, not a substitute for scanning the included target. In
 demo mode, the Scan dialog defaults to `targets/LinkWatch`; submitting it calls
 the local API, which reads the selected repository path dynamically.

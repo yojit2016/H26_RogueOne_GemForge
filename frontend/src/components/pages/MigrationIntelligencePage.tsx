@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from "react"
+import React, { useEffect, useState, Suspense } from "react"
 import {
   Sparkles,
   ShieldAlert,
@@ -35,18 +35,31 @@ const MonacoDiffViewer = React.lazy(
 
 interface MigrationIntelligencePageProps {
   capsule: ExitCapsule | null
+  isDemo: boolean
   onNavigate: (page: ActivePage) => void
   onSendToVerification?: (pkg: string, target?: string) => void
+  onRequestAI: (allowHosted: boolean) => void
+  requestBusy: boolean
+  requestError: string | null
 }
 
 export function MigrationIntelligencePage({
   capsule,
+  isDemo,
   onNavigate,
   onSendToVerification,
+  onRequestAI,
+  requestBusy,
+  requestError,
 }: MigrationIntelligencePageProps) {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"advice" | "manifest_diffs" | "repair_diff">("advice")
   const [selectedManifestFile, setSelectedManifestFile] = useState<string>("pyproject.toml")
+  const [allowHosted, setAllowHosted] = useState(false)
+
+  useEffect(() => {
+    if (!isDemo && activeTab === "repair_diff") setActiveTab("advice")
+  }, [activeTab, isDemo])
 
   if (!capsule) {
     return (
@@ -58,15 +71,24 @@ export function MigrationIntelligencePage({
 
   const recommendations = capsule.recommendations
   const inferences = capsule.inferences
+  const validatedRecommendations = recommendations.filter((item) => item.status !== "not_requested")
+  const analyzedItems = [
+    ...validatedRecommendations,
+    ...inferences.filter(
+      (item) =>
+        !validatedRecommendations.some(
+          (recommendation) => recommendation.package.toLowerCase() === item.package.toLowerCase(),
+        ),
+    ),
+  ]
   const planEdits: ManifestEdit[] = capsule.verification?.plan?.edits || []
 
   // Default selection
   const activePkg =
     selectedPackage ||
-    recommendations[0]?.package ||
-    inferences[0]?.package ||
+    analyzedItems[0]?.package ||
     ""
-  const activeRec: AIRecommendation | undefined = recommendations.find(
+  const activeRec: AIRecommendation | undefined = validatedRecommendations.find(
     (r) => r.package.toLowerCase() === activePkg.toLowerCase(),
   )
   const activeInf: InferenceRecord | undefined = inferences.find(
@@ -76,6 +98,8 @@ export function MigrationIntelligencePage({
   // Selected manifest edit
   const activeManifestEdit =
     planEdits.find((e) => e.file === selectedManifestFile) || planEdits[0]
+  const canRequestAI = ["not_requested", "unavailable", "partial"].includes(capsule.ai_status)
+  const hasAIAnalysis = capsule.ai_status !== "not_requested"
 
   // Genuine Pydantic 2 source migration context per REPAIR-VALIDATION.md:
   // Original linkwatch/config.py excerpt vs engineer review suggestion
@@ -100,8 +124,8 @@ class Site(BaseModel):
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Crucial Epistemic Boundary Notice */}
-      <div className="rounded-xl border border-[#C8D9E6] dark:border-[#0A2472] bg-gradient-to-r from-[#EBF3F8] to-[#F5EFEB] dark:from-[#051650] dark:to-[#00072D] p-4 text-xs text-[var(--foreground)] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors">
+      {hasAIAnalysis && (
+        <div className="rounded-xl border border-[#C8D9E6] dark:border-[#0A2472] bg-gradient-to-r from-[#EBF3F8] to-[#F5EFEB] dark:from-[#051650] dark:to-[#00072D] p-4 text-xs text-[var(--foreground)] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors">
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[#567C8D] dark:text-[#7DD3FC] shrink-0 mt-0.5 shadow-xs">
             <Sparkles size={16} />
@@ -136,18 +160,67 @@ class Site(BaseModel):
           <FlaskConical size={13} />
           <span>Go to Verification Lab</span>
         </Button>
-      </div>
+        </div>
+      )}
 
-      {recommendations.length === 0 && inferences.length === 0 ? (
+      {canRequestAI && (
+        <section className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-3">
+          <div className="flex items-center gap-2 text-sm font-semibold text-[var(--foreground)]">
+            <Sparkles size={15} className="text-[var(--accent-teal)]" />
+            Request Gemma 4 migration intelligence
+          </div>
+          <p className="text-xs leading-relaxed text-[var(--muted-foreground)]">
+            The deterministic scan is complete. You can request a structured migration hypothesis based on its observed risks and source evidence. The recommendation remains unverified.
+          </p>
+          <label className="flex items-start gap-2 text-xs text-[var(--foreground)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowHosted}
+              onChange={(event) => setAllowHosted(event.target.checked)}
+              disabled={requestBusy}
+              className="mt-0.5 rounded border-[var(--border)]"
+            />
+            <span>
+              I allow this scan's dependency and source evidence to be sent to Google's hosted Gemma 4 API for analysis.
+            </span>
+          </label>
+          {requestError && (
+            <div className="rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-3 text-xs text-[var(--status-error-text)]">
+              {requestError}
+            </div>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            disabled={!allowHosted || requestBusy}
+            onClick={() => onRequestAI(allowHosted)}
+            className="gap-2"
+          >
+            {requestBusy
+              ? "Requesting Gemma 4…"
+              : capsule.ai_status === "not_requested"
+                ? "Request Recommendations"
+                : "Retry Analysis"}
+          </Button>
+        </section>
+      )}
+
+      {analyzedItems.length === 0 ? (
         <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-12 text-center space-y-3">
           <Sparkles size={24} className="mx-auto text-[var(--muted-foreground)]" />
           <h3 className="text-sm font-semibold text-[var(--foreground)]">
-            No AI Migration Recommendations in this Capsule
+            {capsule.ai_status === "no_risks"
+              ? "No deterministic dependency risks found"
+              : capsule.ai_status === "not_requested"
+                ? "Gemma 4 analysis has not been requested"
+                : "No validated migration recommendations returned"}
           </h3>
           <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto">
-            This repository scan was executed without Gemma 4 inference (
-            <code className="text-[var(--foreground)]">ai=false</code>). Run an analysis
-            with Gemma 4 enabled to generate migration intelligence.
+            {capsule.ai_status === "not_requested"
+              ? "Only deterministic scan findings are shown. Use the explicit hosted-inference consent above to request a Gemma 4 hypothesis."
+              : capsule.ai_status === "no_risks"
+                ? "Gemma 4 was not called because the deterministic scan found no risks matching the implemented checks."
+                : "The analysis did not produce a validated recommendation. Review the recorded inference status and error details before retrying."}
           </p>
         </div>
       ) : (
@@ -155,15 +228,15 @@ class Site(BaseModel):
           {/* Left Column: Package Selector & Inference Status */}
           <div className="lg:col-span-4 space-y-3">
             <div className="text-xs font-semibold text-[var(--muted-foreground)] px-1">
-              Analyzed Dependencies ({recommendations.length || inferences.length})
+              Analyzed Dependencies ({analyzedItems.length})
             </div>
 
             <div className="space-y-2">
-              {(recommendations.length > 0 ? recommendations : inferences).map(
+              {analyzedItems.map(
                 (item) => {
                   const pkg = item.package
                   const isSelected = pkg.toLowerCase() === activePkg.toLowerCase()
-                  const rec = recommendations.find(
+                  const rec = validatedRecommendations.find(
                     (r) => r.package.toLowerCase() === pkg.toLowerCase(),
                   )
                   const inf = inferences.find(
@@ -202,14 +275,14 @@ class Site(BaseModel):
                             Succeeded
                           </Badge>
                         )}
-                        {inf?.status === "failed" && (
-                          <Badge variant="conflict" className="text-[9px] py-0 px-1.5 h-4">
-                            Failed
+                        {rec?.status === "generated" && !inf && (
+                          <Badge variant="success" className="text-[9px] py-0 px-1.5 h-4">
+                            Generated
                           </Badge>
                         )}
-                        {!inf && (
-                          <Badge variant="secondary" className="text-[9px] py-0 px-1.5 h-4">
-                            Cached
+                        {inf && inf.status !== "succeeded" && (
+                          <Badge variant={inf.status === "failed" ? "conflict" : "secondary"} className="text-[9px] py-0 px-1.5 h-4">
+                            {inf.status}
                           </Badge>
                         )}
                       </div>
@@ -282,7 +355,7 @@ class Site(BaseModel):
                 <FileDiff className="h-3.5 w-3.5" />
                 Manifest Diff ({planEdits.length})
               </button>
-              <button
+              {isDemo && <button
                 type="button"
                 onClick={() => setActiveTab("repair_diff")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-all cursor-pointer ${
@@ -292,8 +365,8 @@ class Site(BaseModel):
                 }`}
               >
                 <FileCode className="h-3.5 w-3.5" />
-                Source Repair Suggestion
-              </button>
+                Historical Repair Example
+              </button>}
             </div>
 
             {/* TAB 1: Gemma 4 Migration Advice */}
@@ -488,7 +561,7 @@ class Site(BaseModel):
             )}
 
             {/* TAB 3: Source Code Repair Suggestion via Monaco DiffEditor */}
-            {activeTab === "repair_diff" && (
+            {isDemo && activeTab === "repair_diff" && (
               <div className="space-y-4 animate-fade-in">
                 {/* Honest Epistemic Provenance Disclaimer Banner */}
                 <div className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-4 text-xs text-[var(--status-warning-text)] space-y-2">
@@ -503,7 +576,7 @@ class Site(BaseModel):
                   </p>
                   <div className="pt-2 border-t border-[var(--status-warning-border)] text-[10px] font-mono flex items-center justify-between">
                     <span>
-                      Gemma 4 hosted repair request status: <strong>HTTP 504 DEADLINE_EXCEEDED (181,112 ms timeout)</strong>
+                      Historical Gemma 4 hosted repair request: <strong>HTTP 504 DEADLINE_EXCEEDED (181,112 ms timeout)</strong>
                     </span>
                     <Badge variant="warning" className="text-[9px]">
                       Repair Status: unavailable

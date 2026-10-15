@@ -32,7 +32,9 @@ def safe_data(value):
     return sanitized_output(value) if isinstance(value, str) else value
 
 
-def repair_evidence(capsule: ExitCapsule, package: str) -> list[RepairEvidence]:
+def repair_evidence(
+    capsule: ExitCapsule, package: str, repository_path: str | None = None
+) -> list[RepairEvidence]:
     verification = capsule.verification
     if (
         verification.verdict != "regression_detected"
@@ -42,7 +44,7 @@ def repair_evidence(capsule: ExitCapsule, package: str) -> list[RepairEvidence]:
         raise ValueError(
             "Repair suggestions require a recorded regression for the selected dependency."
         )
-    fresh = scan_repository(capsule.repository)
+    fresh = scan_repository(repository_path or capsule.repository, capsule.import_map)
     if fresh.dependencies != capsule.dependencies:
         raise ValueError("Repository declarations changed since the verification capsule.")
     view = verification_view(capsule)
@@ -263,9 +265,10 @@ def suggest_repair(
     ai: bool = False,
     allow_hosted: bool = False,
     config: GemmaConfig | None = None,
+    repository_path: str | None = None,
 ) -> ExitCapsule:
     package = canonicalize_name(dependency)
-    evidence = repair_evidence(capsule, package)
+    evidence = repair_evidence(capsule, package, repository_path)
     result = capsule.model_copy(deep=True)
     repair = RepairRecommendation(
         package=package,

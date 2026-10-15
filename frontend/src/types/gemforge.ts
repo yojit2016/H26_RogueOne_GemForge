@@ -209,6 +209,8 @@ export interface ExitCapsule {
   schema_version: "1.0"
   generated_at: string
   repository: string
+  source_commit?: string | null
+  import_map?: Record<string, string>
   dependencies: Dependency[]
   risks: DetectedRisk[]
   constraints: ConstraintAssessment[]
@@ -299,6 +301,7 @@ export interface VerificationView {
 // API Request/Response contracts
 export interface ScanRequest {
   path: string
+  source_commit?: string | null
   import_map?: Record<string, string>
 }
 
@@ -315,6 +318,7 @@ export interface AnalysisResponse {
 
 export interface VerificationRequest {
   path: string
+  source_commit?: string | null
   dependency: string
   target?: string | null
   analysis_id?: string | null
@@ -329,4 +333,3 @@ export interface HealthResponse {
   status: string
   phase: string
 }
-

@@ -13,18 +13,46 @@ The API is for trusted local use and is unauthenticated; keep it on loopback.
 | Method/path | Input | Output |
 | --- | --- | --- |
 | `GET /health` | None | `{status:"ok",phase:"3"}` |
-| `POST /scan` | `ScanRequest`: path, optional import_map | `ExitCapsule` |
+| `POST /scan` | `ScanRequest`: local path or public GitHub HTTPS URL, optional source_commit/import_map | `ExitCapsule` |
 | `POST /analyze` | `AnalysisRequest`: scan fields, ai, allow_hosted, max_ai_packages | HTTP 201 `AnalysisResponse` |
-| `POST /verify` | `VerificationRequest`: path, dependency, optional target/analysis_id, consent, reviewed probes and limits | HTTP 201 `AnalysisResponse` |
+| `POST /verify` | `VerificationRequest`: source, dependency, optional target/analysis_id/source_commit, consent, reviewed probes and limits | HTTP 201 `AnalysisResponse` |
 | `GET /analyses/{id}` | Cached ID | `ExitCapsule` |
 | `GET /analyses/{id}/export?format=json` | Cached ID | application/json `ExitCapsule` attachment |
 | `GET /analyses/{id}/export?format=markdown` | Cached ID | text/markdown attachment |
 
 `AnalysisResponse` remains `{id:string,capsule:ExitCapsule}`. Existing fields and
-enum values are unchanged. Capsule schema version remains `1.0`; the additive
+enum values are unchanged. Capsule schema version remains `1.0`; optional
+`source_commit` records the resolved 40-character Git commit for remote sources.
+Capsules also retain the normalized `import_map` used for usage analysis, so a
+follow-up Gemma request uses the same module-to-distribution mapping.
+The additive
 `repairs` list defaults to `[]` when old capsules are read. Handle absent repairs
 in previously saved JSON. `/scan` is read-only/offline; `/analyze` without AI is
 offline. Hosted inference remains opt-in and uses the existing Gemma 4 SDK adapter.
+
+## Repository sources and commit pinning
+
+`path` accepts either a local directory or `https://github.com/<owner>/<repo>`
+(an optional `.git` suffix is allowed). URL input is restricted to public
+GitHub HTTPS repositories; other schemes, hosts, credentials, queries and
+fragments are rejected. The backend uses Git non-interactively, disables hooks,
+does not initialize submodules, shallow-checks out into an owned temporary
+directory, and removes it after the request. Checkout is limited to 120 seconds,
+20,000 files and 100 MiB of checked-out source. Analysis records the resolved
+commit in `capsule.source_commit`. Supply that SHA with a later analysis/verify
+request to pin the operation to the same revision. `/verify` also reuses the
+prior capsule's commit if its request omits `source_commit`.
+
+Example:
+
+```json
+{"path":"https://github.com/rishrek/LinkWatch","ai":false}
+```
+
+`/analyze` with `ai:false` provides deterministic findings first. A separate
+`/analyze` request with `ai:true` and explicit `allow_hosted:true` requests
+Gemma 4 hypotheses against the same URL and `source_commit`. No hosted request
+is sent by scan-only analysis.
 
 | Dashboard data | Typed capsule field |
 | --- | --- |
@@ -41,6 +69,12 @@ Do not equate HTTP 201, `ai_status:"generated"`, or successful installation with
 compatibility. Render `verification.verdict` independently. Its existing values
 are `not_run`, `execution_failed`, `inconclusive`, `regression_detected` and
 `verified_for_selected_checks`; the last still is not a universal safety verdict.
+
+`POST /verify` with `confirm_execution:false` prepares and returns a manifest-only
+plan without running target code. Review the returned `verification.plan` before
+submitting the request again with `confirm_execution:true` and the returned
+analysis ID. Explicit consent is required for tests/probes; Python virtual
+environments isolate packages but are not a security sandbox.
 
 ## Import an existing capsule without rerunning verification
 

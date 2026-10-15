@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ChangeEvent } from "react"
-import { Sparkles, Terminal, AlertCircle, Plus, Trash2, Upload, FileJson } from "lucide-react"
+import { Terminal, AlertCircle, Plus, Trash2, Upload, FileJson } from "lucide-react"
 import { Modal } from "@/components/ui/modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,16 +10,13 @@ import type { ExitCapsule } from "@/types/gemforge"
 interface ScanModalProps {
   open: boolean
   onClose: () => void
-  onSuccess: (capsule: ExitCapsule, analysisId?: string) => void
+  onSuccess: (capsule: ExitCapsule, analysisId?: string, historical?: boolean) => void
   defaultPath?: string
 }
 
 export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanModalProps) {
   const [modalMode, setModalMode] = useState<"scan" | "import">("scan")
   const [path, setPath] = useState(defaultPath)
-  const [runAi, setRunAi] = useState(true)
-  const [allowHosted, setAllowHosted] = useState(true)
-  const [maxAiPackages, setMaxAiPackages] = useState(10)
   const [importMaps, setImportMaps] = useState<{ pkg: string; mod: string }[]>([
     { pkg: "python-dateutil", mod: "dateutil" },
   ])
@@ -50,29 +47,18 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
     const mapObj: Record<string, string> = {}
     for (const item of importMaps) {
       if (item.pkg.trim() && item.mod.trim()) {
-        mapObj[item.pkg.trim()] = item.mod.trim()
+        mapObj[item.mod.trim()] = item.pkg.trim()
       }
     }
 
     try {
-      if (runAi) {
-        const res = await api.analyze({
-          path: path.trim(),
-          ai: true,
-          allow_hosted: allowHosted,
-          max_ai_packages: maxAiPackages,
-          import_map: mapObj,
-        })
-        onSuccess(res.capsule, res.id)
-        onClose()
-      } else {
-        const capsule = await api.scan({
-          path: path.trim(),
-          import_map: mapObj,
-        })
-        onSuccess(capsule)
-        onClose()
-      }
+      const res = await api.analyze({
+        path: path.trim(),
+        ai: false,
+        import_map: mapObj,
+      })
+      onSuccess(res.capsule, res.id)
+      onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Scanning failed")
     } finally {
@@ -96,14 +82,8 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
       }
 
       // Try importing to backend via POST /analyses/import
-      try {
-        const res = await api.importAnalysis(parsed)
-        onSuccess(res.capsule, res.id)
-      } catch (backendErr) {
-        // If backend offline or unreachable, load directly client-side
-        console.warn("Backend import endpoint unavailable, loading capsule locally:", backendErr)
-        onSuccess(parsed, "imported-" + Date.now())
-      }
+      const res = await api.importAnalysis(parsed)
+      onSuccess(res.capsule, res.id, true)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to parse capsule file")
@@ -117,12 +97,12 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
       open={open}
       onClose={onClose}
       title="Repository Analysis & Capsule Import"
-      description="Scan local repository declarations or import a pre-computed Exit Capsule."
+      description="Analyze a local repository or public GitHub URL, or load a clearly identified historical capsule."
     >
       <div className="space-y-4 text-[var(--foreground)]">
         <Tabs value={modalMode} onValueChange={(v) => setModalMode(v as typeof modalMode)}>
           <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="scan">Local Repository Scan</TabsTrigger>
+            <TabsTrigger value="scan">Repository Scan</TabsTrigger>
             <TabsTrigger value="import">Import Capsule JSON</TabsTrigger>
           </TabsList>
 
@@ -137,64 +117,26 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
 
               <div className="space-y-1.5">
                 <label htmlFor="repo-path" className="block text-xs font-semibold text-[var(--foreground)]">
-                  Local repository root path
+                  Repository path or public GitHub HTTPS URL
                 </label>
                 <Input
                   id="repo-path"
                   required
-                  placeholder="C:/path/to/python-project"
+                  placeholder="https://github.com/rishrek/LinkWatch or C:/path/to/project"
                   value={path}
                   onChange={(e) => setPath(e.target.value)}
                   disabled={busy}
                   className="font-mono text-xs"
                 />
                 <p className="text-[11px] text-[var(--muted-foreground)]">
-                  Path is read by the local FastAPI backend. In demo mode this
-                  defaults to <code className="font-semibold text-[var(--foreground)]">targets/LinkWatch</code>.
-                  Manifests and Python source are inspected without executing repository code.
+                  Accepts a local directory or public <code className="font-semibold text-[var(--foreground)]">https://github.com/owner/repository</code>.
+                  GitHub sources are shallow-checked out to a temporary directory, pinned to the recorded commit, and removed after each request.
+                  Scanning reads manifests and Python source without executing repository code.
                 </p>
               </div>
 
-              {/* Analysis Mode Toggles */}
-              <div className="space-y-2 rounded-xl border border-[var(--border)] bg-[var(--muted)]/40 p-3.5 text-xs">
-                <label className="flex items-center gap-2 cursor-pointer font-medium text-[var(--foreground)] select-none">
-                  <input
-                    type="checkbox"
-                    checked={runAi}
-                    onChange={(e) => setRunAi(e.target.checked)}
-                    disabled={busy}
-                    className="rounded border-[var(--border)] text-[var(--primary)] focus:ring-1"
-                  />
-                  <span>Enable Gemma 4 Migration Intelligence</span>
-                </label>
-
-                {runAi && (
-                  <div className="pl-6 space-y-2 pt-1 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)]">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={allowHosted}
-                        onChange={(e) => setAllowHosted(e.target.checked)}
-                        disabled={busy}
-                        className="rounded border-[var(--border)]"
-                      />
-                      <span>Allow hosted Gemma 4 inference (requires GEMINI_API_KEY)</span>
-                    </label>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <span>Max AI package analyses:</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={50}
-                        value={maxAiPackages}
-                        onChange={(e) => setMaxAiPackages(Number(e.target.value))}
-                        disabled={busy}
-                        className="w-16 h-7 text-xs font-mono"
-                      />
-                    </div>
-                  </div>
-                )}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--muted)]/40 p-3.5 text-xs text-[var(--muted-foreground)]">
+                This first stage is an offline dependency scan. Findings are shown before any optional hosted Gemma 4 request or verification.
               </div>
 
               {/* Distribution Import Mappings */}
@@ -255,7 +197,7 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
                   ) : (
                     <>
                       <Terminal size={14} />
-                      <span>{runAi ? "Start Full Analysis" : "Run Fast Scan"}</span>
+                      <span>Scan Dependencies</span>
                     </>
                   )}
                 </Button>
@@ -301,7 +243,7 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
               </div>
 
               <div className="text-[11px] text-[var(--muted-foreground)] text-center leading-relaxed">
-                Connects to <code className="font-mono text-[var(--foreground)]">POST /analyses/import</code> on backend with fallback to offline evaluation.
+                Imports the capsule through <code className="font-mono text-[var(--foreground)]">POST /analyses/import</code>. Imported evidence is identified as historical; it is not rerun or independently attested.
               </div>
             </div>
           </TabsContent>
