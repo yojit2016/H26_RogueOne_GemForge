@@ -1,59 +1,174 @@
-import { useState, type FormEvent } from "react"
-import { Button } from "@/components/ui/button"
-
-type Capsule = {
-  dependencies: { package: string }[]
-  risks: { package: string; certainty: string; evidence: string }[]
-  usages: unknown[]
-  verification: { status: string }
-  limitations: string[]
-}
+import { useState, useEffect, useCallback } from "react"
+import { Navbar, type ActivePage } from "@/components/Navbar"
+import { OverviewPage } from "@/components/pages/OverviewPage"
+import { DependencyExplorerPage } from "@/components/pages/DependencyExplorerPage"
+import { MigrationIntelligencePage } from "@/components/pages/MigrationIntelligencePage"
+import { VerificationLaboratoryPage } from "@/components/pages/VerificationLaboratoryPage"
+import { ExitCapsulePage } from "@/components/pages/ExitCapsulePage"
+import { ScanModal } from "@/components/ScanModal"
+import { VerificationModal } from "@/components/VerificationModal"
+import { ExportModal } from "@/components/ExportModal"
+import { api } from "@/lib/api"
+import { LINKWATCH_DEMO_CAPSULE } from "@/lib/fixtures"
+import type { ExitCapsule, HealthResponse } from "@/types/gemforge"
 
 export default function App() {
-  const [path, setPath] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState("")
-  const [capsule, setCapsule] = useState<Capsule | null>(null)
+  const [activePage, setActivePage] = useState<ActivePage>("overview")
+  // In development, initialize with the authentic LinkWatch Phase 3 fixture for immediate rich dashboard review
+  const [capsule, setCapsule] = useState<ExitCapsule | null>(LINKWATCH_DEMO_CAPSULE)
+  const [currentAnalysisId, setCurrentAnalysisId] = useState<string | undefined>("linkwatch-phase3")
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(true)
 
-  async function scan(event: FormEvent) {
-    event.preventDefault()
-    setBusy(true); setError(""); setCapsule(null)
+  // Modals
+  const [scanModalOpen, setScanModalOpen] = useState(false)
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false)
+  const [exportModalOpen, setExportModalOpen] = useState(false)
+
+  // Preselected verification items
+  const [selectedVerifyDep, setSelectedVerifyDep] = useState<string>("pydantic")
+  const [selectedVerifyTarget, setSelectedVerifyTarget] = useState<string>("pydantic>=2")
+
+  // Backend connection
+  const [backendHealth, setBackendHealth] = useState<HealthResponse | null>(null)
+  const [isBackendChecking, setIsBackendChecking] = useState(true)
+
+  // Check health on mount and periodically
+  const checkBackend = useCallback(async () => {
+    setIsBackendChecking(true)
     try {
-      const response = await fetch("/api/scan", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path }),
-      })
-      if (!response.ok) throw new Error(`Scan failed (${response.status}): ${await response.text()}`)
-      setCapsule(await response.json())
-    } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Scan failed")
-    } finally { setBusy(false) }
+      const health = await api.checkHealth()
+      setBackendHealth(health)
+    } catch {
+      setBackendHealth(null)
+    } finally {
+      setIsBackendChecking(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    checkBackend()
+    const timer = setInterval(checkBackend, 15000)
+    return () => clearInterval(timer)
+  }, [checkBackend])
+
+  const handleToggleDemoMode = () => {
+    if (isDemoMode) {
+      setCapsule(null)
+      setCurrentAnalysisId(undefined)
+      setIsDemoMode(false)
+    } else {
+      setCapsule(LINKWATCH_DEMO_CAPSULE)
+      setCurrentAnalysisId("linkwatch-phase3")
+      setIsDemoMode(true)
+    }
   }
 
-  return <main className="mx-auto max-w-3xl space-y-6 p-6 sm:p-12">
-    <header>
-      <p className="text-sm text-slate-500">Dependency resilience · Phase 1</p>
-      <h1 className="mt-2 text-4xl font-bold">GemForge</h1>
-      <p className="mt-3 text-slate-600">Inspect local dependency declarations and Python imports. Scanning reads files without running repository code.</p>
-    </header>
-    <form onSubmit={scan} className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
-      <label htmlFor="repository" className="block font-medium">Local repository path</label>
-      <input id="repository" required value={path} onChange={event => setPath(event.target.value)}
-        placeholder="C:/path/to/LinkWatch" className="w-full rounded-md border border-slate-300 p-3" />
-      <Button disabled={busy || !path.trim()} type="submit">{busy ? "Scanning…" : "Scan repository"}</Button>
-    </form>
-    {error && <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-4">{error}</p>}
-    {capsule && <section aria-live="polite" className="space-y-4">
-      <h2 className="text-xl font-semibold">Scan results</h2>
-      <p>{capsule.dependencies.length} declarations · {capsule.usages.length} usage locations · Verification: {capsule.verification.status}</p>
-      {capsule.risks.length ? <ul className="space-y-3">{capsule.risks.map((risk, index) =>
-        <li key={index} className="rounded-md border border-amber-300 bg-amber-50 p-4">
-          <strong>{risk.package}</strong> · {risk.certainty}<p>{risk.evidence}</p>
-        </li>)}</ul> : <p>No risks detected by the implemented checks. This does not establish safety.</p>}
-      <details><summary className="cursor-pointer font-medium">Analysis limitations</summary>
-        <ul className="mt-3 list-disc space-y-2 pl-5">{capsule.limitations.map(item => <li key={item}>{item}</li>)}</ul>
-      </details>
-    </section>}
-    <p className="text-sm text-slate-500">Gemma recommendations and original-vs-candidate verification are planned for Phase 2.</p>
-  </main>
+  const handleScanSuccess = (newCapsule: ExitCapsule, analysisId?: string) => {
+    setCapsule(newCapsule)
+    setCurrentAnalysisId(analysisId)
+    setIsDemoMode(false)
+    setActivePage("overview")
+  }
+
+  const handleVerificationSuccess = (updatedCapsule: ExitCapsule, analysisId?: string) => {
+    setCapsule(updatedCapsule)
+    setCurrentAnalysisId(analysisId)
+    setIsDemoMode(false)
+    setActivePage("verification")
+  }
+
+  const handleSendToVerification = (pkg: string, target?: string) => {
+    setSelectedVerifyDep(pkg)
+    if (target) setSelectedVerifyTarget(target)
+    setVerificationModalOpen(true)
+  }
+
+  return (
+    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col font-sans">
+      {/* Top Navbar */}
+      <Navbar
+        activePage={activePage}
+        onSelectPage={setActivePage}
+        backendHealth={backendHealth}
+        isBackendChecking={isBackendChecking}
+        isDemoMode={isDemoMode}
+        onToggleDemoMode={handleToggleDemoMode}
+        onOpenScanModal={() => setScanModalOpen(true)}
+        onOpenExport={() => setExportModalOpen(true)}
+        repositoryName={capsule?.repository}
+        hasCapsule={Boolean(capsule)}
+      />
+
+      {/* Main Workspace Canvas */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6">
+        {activePage === "overview" && (
+          <OverviewPage
+            capsule={capsule}
+            isDemo={isDemoMode}
+            onNavigate={setActivePage}
+            onOpenScanModal={() => setScanModalOpen(true)}
+            onOpenVerificationModal={() => setVerificationModalOpen(true)}
+          />
+        )}
+
+        {activePage === "explorer" && (
+          <DependencyExplorerPage
+            capsule={capsule}
+            onNavigate={setActivePage}
+            onSelectForVerification={(pkg) => handleSendToVerification(pkg)}
+          />
+        )}
+
+        {activePage === "migration" && (
+          <MigrationIntelligencePage
+            capsule={capsule}
+            onNavigate={setActivePage}
+            onSendToVerification={handleSendToVerification}
+          />
+        )}
+
+        {activePage === "verification" && (
+          <VerificationLaboratoryPage
+            capsule={capsule}
+            onOpenVerificationModal={() => setVerificationModalOpen(true)}
+          />
+        )}
+
+        {activePage === "capsule" && (
+          <ExitCapsulePage
+            capsule={capsule}
+            onOpenExport={() => setExportModalOpen(true)}
+          />
+        )}
+      </main>
+
+      {/* Modals */}
+      <ScanModal
+        open={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        onSuccess={handleScanSuccess}
+        defaultPath={capsule?.repository || ""}
+      />
+
+      {capsule && (
+        <VerificationModal
+          open={verificationModalOpen}
+          onClose={() => setVerificationModalOpen(false)}
+          onSuccess={handleVerificationSuccess}
+          currentRepoPath={capsule.repository}
+          currentAnalysisId={currentAnalysisId}
+          dependencies={Array.from(new Set(capsule.dependencies.map((d) => d.package)))}
+          defaultDependency={selectedVerifyDep}
+          defaultTarget={selectedVerifyTarget}
+        />
+      )}
+
+      <ExportModal
+        open={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        capsule={capsule}
+        analysisId={currentAnalysisId}
+      />
+    </div>
+  )
 }
