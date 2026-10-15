@@ -14,6 +14,7 @@ import type { ExitCapsule, HealthResponse } from "@/types/gemforge"
 
 export default function App() {
   const [activePage, setActivePage] = useState<ActivePage>("overview")
+  const [railCollapsed, setRailCollapsed] = useState(false)
   // In development, initialize with the authentic LinkWatch Phase 3 fixture for immediate rich dashboard review
   const [capsule, setCapsule] = useState<ExitCapsule | null>(LINKWATCH_DEMO_CAPSULE)
   const [currentAnalysisId, setCurrentAnalysisId] = useState<string | undefined>()
@@ -118,8 +119,11 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans transition-colors duration-200">
-      {/* Top Navbar */}
+    <div
+      className={`workbench-shell font-sans ${
+        railCollapsed ? "rail-collapsed" : ""
+      }`}
+    >
       <Navbar
         activePage={activePage}
         onSelectPage={setActivePage}
@@ -131,12 +135,13 @@ export default function App() {
         onOpenExport={() => setExportModalOpen(true)}
         repositoryName={capsule?.repository}
         hasCapsule={Boolean(capsule)}
+        railCollapsed={railCollapsed}
+        onToggleRail={() => setRailCollapsed((collapsed) => !collapsed)}
       />
 
-      {/* Main Workspace Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-6">
+      <main className="workbench-main min-w-0 px-4 py-4 sm:px-6">
         {(isHistorical || isDemoMode) && (
-          <div className="mb-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-3 text-xs text-[var(--status-warning-text)]">
+          <div className="historical-notice mb-3 rounded border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-3 py-2 text-xs text-[var(--status-warning-text)]">
             {isDemoMode
               ? "Historical LinkWatch demonstration fixture. These path-redacted results are from a previous run, not a live repository scan."
               : "Historical imported capsule. Its recorded results are from a previous run; importing did not rescan, rerun inference, or repeat verification."}

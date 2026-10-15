@@ -217,7 +217,7 @@ export function VerificationLaboratoryPage({
               <GitCompare className="h-4 w-4 text-[var(--accent-teal)]" />
               <span>Side-by-Side Environment Comparison</span>
             </div>
-            <div className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-1">
+            <div className="verification-resize-hint text-[11px] text-[var(--muted-foreground)] flex items-center gap-1">
               <Sliders className="h-3 w-3" />
               <span>Drag divider handle to adjust panel width</span>
             </div>

@@ -96,8 +96,9 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
     <Modal
       open={open}
       onClose={onClose}
-      title="Repository Analysis & Capsule Import"
-      description="Analyze a local repository or public GitHub URL, or load a clearly identified historical capsule."
+      title="Analyze Python Repository"
+      description="Inspect a local or public GitHub source for dependency constraints, Python usage, and evidence-backed risks. No repository code is executed during scanning."
+      maxWidth="max-w-4xl"
     >
       <div className="space-y-4 text-[var(--foreground)]">
         <Tabs value={modalMode} onValueChange={(v) => setModalMode(v as typeof modalMode)}>

@@ -19,6 +19,9 @@ export function Modal({
   children,
   maxWidth = "max-w-xl",
 }: ModalProps) {
+  const titleId = React.useId()
+  const descriptionId = React.useId()
+
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && open) {
@@ -44,16 +47,18 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         className={cn(
-          "relative w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-150 z-10 my-auto text-[var(--foreground)]",
+          "workbench-modal__dialog relative z-10 my-auto w-full border border-[var(--border)] bg-[var(--card)] text-[var(--foreground)] transition-all animate-in zoom-in-95 duration-150",
           maxWidth,
         )}
       >
         <div className="flex items-start justify-between pb-4 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-base font-semibold text-[var(--foreground)]">{title}</h2>
+            <h2 id={titleId} className="text-base font-semibold text-[var(--foreground)]">{title}</h2>
             {description && (
-              <p className="mt-1 text-xs text-[var(--muted-foreground)]">{description}</p>
+              <p id={descriptionId} className="mt-1 text-xs text-[var(--muted-foreground)]">{description}</p>
             )}
           </div>
           <button
