@@ -1,5 +1,76 @@
 @import "tailwindcss";
 
-:root { font-family: system-ui, sans-serif; color: #0f172a; background: #f8fafc; }
-body { margin: 0; }
-button, input { font: inherit; }
+@layer base {
+  :root {
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-sans);
+    color-scheme: dark;
+    background-color: #090a0f;
+    color: #f1f5f9;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background-color: #090a0f;
+    color: #e2e8f0;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  code, pre, kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #272a38;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3b4055;
+}
+
+/* Linear & GitHub-style subtle border gradients and glass effects */
+.panel-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-card {
+  background-color: #0e1017;
+  border: 1px solid #1e2230;
+  border-radius: 0.75rem;
+}
+
+.panel-card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.panel-card-hover:hover {
+  border-color: #2e354a;
+  background-color: #121520;
+}
+
+/* Status dots */
+.status-pulse {
+  position: relative;
+}
+.status-pulse::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.6); opacity: 0; }
+}
