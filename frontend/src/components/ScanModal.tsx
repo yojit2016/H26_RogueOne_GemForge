@@ -85,16 +85,16 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
       title="Initiate Repository Analysis"
       description="Inspect Python dependency declarations, AST usage locations, and generate migration intelligence."
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 text-[var(--foreground)]">
         {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-xs text-red-300">
-            <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-3 text-xs text-[var(--status-error-text)]">
+            <AlertCircle size={15} className="shrink-0 mt-0.5" />
             <div className="leading-relaxed">{error}</div>
           </div>
         )}
 
         <div className="space-y-1.5">
-          <label htmlFor="repo-path" className="block text-xs font-medium text-slate-300">
+          <label htmlFor="repo-path" className="block text-xs font-semibold text-[var(--foreground)]">
             Local repository root path
           </label>
           <Input
@@ -106,46 +106,46 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
             disabled={busy}
             className="font-mono text-xs"
           />
-          <p className="text-[11px] text-slate-500">
-            Reads manifests (<code className="text-slate-400">pyproject.toml</code>, <code className="text-slate-400">requirements.txt</code>) and parses Python source files without executing repository code.
+          <p className="text-[11px] text-[var(--muted-foreground)]">
+            Reads manifests (<code className="font-semibold text-[var(--foreground)]">pyproject.toml</code>, <code className="font-semibold text-[var(--foreground)]">requirements.txt</code>) and parses Python source files without executing repository code.
           </p>
         </div>
 
-        <div className="rounded-lg border border-[#1e2333] bg-[#090b10] p-3.5 space-y-3">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 p-3.5 space-y-3">
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-2 text-xs font-medium text-slate-200 cursor-pointer">
+            <label className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground)] cursor-pointer">
               <input
                 type="checkbox"
                 checked={runAi}
                 onChange={(e) => setRunAi(e.target.checked)}
                 disabled={busy}
-                className="rounded border-[#2a2f42] bg-[#121520] text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                className="rounded border-[var(--border)] bg-[var(--card)] text-[var(--primary)] focus:ring-0 cursor-pointer"
               />
               <span className="flex items-center gap-1.5">
-                <Sparkles size={13} className="text-indigo-400" />
+                <Sparkles size={13} className="text-[#567C8D] dark:text-[#7DD3FC]" />
                 Gemma 4 Migration Intelligence
               </span>
             </label>
-            <span className="text-[10px] uppercase font-mono text-indigo-400 tracking-wider">
+            <span className="text-[10px] uppercase font-mono text-[#567C8D] dark:text-[#7DD3FC] font-semibold tracking-wider">
               {runAi ? "Enabled" : "Metadata Only"}
             </span>
           </div>
 
           {runAi && (
-            <div className="pl-5 space-y-2.5 border-l border-[#1c202d] text-xs">
-              <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <div className="pl-5 space-y-2.5 border-l border-[var(--border)] text-xs">
+              <label className="flex items-center gap-2 text-[var(--foreground)] cursor-pointer">
                 <input
                   type="checkbox"
                   checked={allowHosted}
                   onChange={(e) => setAllowHosted(e.target.checked)}
                   disabled={busy}
-                  className="rounded border-[#2a2f42] bg-[#121520] text-indigo-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                  className="rounded border-[var(--border)] bg-[var(--card)] text-[var(--primary)] focus:ring-0 cursor-pointer"
                 />
                 <span>Allow Hosted Gemma 4 Inference via Google GenAI Developer API</span>
               </label>
 
               <div className="flex items-center gap-3 pt-1">
-                <span className="text-slate-400 text-xs">Max AI Packages:</span>
+                <span className="text-[var(--muted-foreground)] text-xs">Max AI Packages:</span>
                 <input
                   type="number"
                   min={1}
@@ -153,7 +153,7 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
                   value={maxAiPackages}
                   onChange={(e) => setMaxAiPackages(Math.max(1, Math.min(50, Number(e.target.value))))}
                   disabled={busy}
-                  className="w-16 rounded border border-[#272c3d] bg-[#0c0e15] px-2 py-0.5 text-xs text-center font-mono text-slate-200"
+                  className="w-16 rounded border border-[var(--border)] bg-[var(--card)] px-2 py-0.5 text-xs text-center font-mono text-[var(--foreground)]"
                 />
               </div>
             </div>
@@ -162,14 +162,14 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-300">
+            <span className="text-xs font-semibold text-[var(--foreground)]">
               Custom Import Mappings (optional)
             </span>
             <button
               type="button"
               onClick={addImportMap}
               disabled={busy}
-              className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 cursor-pointer"
+              className="flex items-center gap-1 text-[11px] text-[#567C8D] dark:text-[#7DD3FC] hover:underline cursor-pointer font-medium"
             >
               <Plus size={12} />
               Add mapping
@@ -185,7 +185,7 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
                   disabled={busy}
                   className="text-xs font-mono h-7"
                 />
-                <span className="text-slate-600 text-xs">→</span>
+                <span className="text-[var(--muted-foreground)] text-xs">→</span>
                 <Input
                   placeholder="Import (e.g. dateutil)"
                   value={item.mod}
@@ -197,7 +197,7 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
                   type="button"
                   onClick={() => removeImportMap(index)}
                   disabled={busy}
-                  className="p-1 text-slate-500 hover:text-rose-400 transition-colors cursor-pointer"
+                  className="p-1 text-[var(--muted-foreground)] hover:text-rose-500 transition-colors cursor-pointer"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -206,14 +206,14 @@ export function ScanModal({ open, onClose, onSuccess, defaultPath = "" }: ScanMo
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#1c202e]">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-[var(--border)]">
           <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button type="submit" disabled={busy || !path.trim()} className="gap-2">
             {busy ? (
               <>
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 <span>Analyzing…</span>
               </>
             ) : (

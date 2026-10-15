@@ -90,17 +90,17 @@ export function VerificationModal({
       description="Compare baseline vs candidate environments in ephemeral virtual environments. Consent required."
       maxWidth="max-w-2xl"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 text-[var(--foreground)]">
         {error && (
-          <div className="flex items-start gap-2.5 rounded-lg border border-red-900/60 bg-red-950/40 p-3 text-xs text-red-300">
-            <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
+          <div className="flex items-start gap-2.5 rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-3 text-xs text-[var(--status-error-text)]">
+            <AlertCircle size={15} className="shrink-0 mt-0.5" />
             <div className="leading-relaxed">{error}</div>
           </div>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label htmlFor="verify-dep" className="block text-xs font-medium text-slate-300">
+            <label htmlFor="verify-dep" className="block text-xs font-semibold text-[var(--foreground)]">
               Dependency to migrate
             </label>
             <Input
@@ -115,7 +115,7 @@ export function VerificationModal({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="verify-target" className="block text-xs font-medium text-slate-300">
+            <label htmlFor="verify-target" className="block text-xs font-semibold text-[var(--foreground)]">
               Candidate target constraint
             </label>
             <Input
@@ -131,7 +131,7 @@ export function VerificationModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <label htmlFor="import-mod" className="block text-xs font-medium text-slate-300">
+            <label htmlFor="import-mod" className="block text-xs font-semibold text-[var(--foreground)]">
               Import probe module
             </label>
             <Input
@@ -145,7 +145,7 @@ export function VerificationModal({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="timeout-sec" className="block text-xs font-medium text-slate-300">
+            <label htmlFor="timeout-sec" className="block text-xs font-semibold text-[var(--foreground)]">
               Command timeout (s)
             </label>
             <Input
@@ -161,7 +161,7 @@ export function VerificationModal({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="inst-timeout-sec" className="block text-xs font-medium text-slate-300">
+            <label htmlFor="inst-timeout-sec" className="block text-xs font-semibold text-[var(--foreground)]">
               Pip install timeout (s)
             </label>
             <Input
@@ -179,11 +179,11 @@ export function VerificationModal({
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label htmlFor="probes-json" className="text-xs font-medium text-slate-300 flex items-center gap-1.5">
-              <FileCode size={13} className="text-slate-400" />
+            <label htmlFor="probes-json" className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5">
+              <FileCode size={13} className="text-[var(--muted-foreground)]" />
               Custom Model Probes JSON (optional)
             </label>
-            <span className="text-[10px] text-slate-500 font-mono">ModelProbe[]</span>
+            <span className="text-[10px] text-[var(--muted-foreground)] font-mono">ModelProbe[]</span>
           </div>
           <textarea
             id="probes-json"
@@ -192,47 +192,46 @@ export function VerificationModal({
             value={probesJson}
             onChange={(e) => setProbesJson(e.target.value)}
             disabled={busy}
-            className="w-full rounded-lg border border-[#272c3d] bg-[#0c0e15] p-2 text-xs font-mono text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            className="w-full rounded-lg border border-[var(--border)] bg-[var(--card)] p-2 text-xs font-mono text-[var(--foreground)] placeholder:text-[var(--muted-foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
           />
         </div>
 
         {/* Security & Explicit Consent Banner */}
-        <div className="rounded-xl border border-amber-900/50 bg-amber-950/30 p-3.5 space-y-2.5">
-          <div className="flex items-center gap-2 text-amber-300 font-semibold text-xs">
-            <ShieldAlert size={15} className="text-amber-400" />
+        <div className="rounded-xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3.5 space-y-2.5">
+          <div className="flex items-center gap-2 font-semibold text-xs text-[var(--status-warning-text)]">
+            <ShieldAlert size={15} />
             Security & Execution Consent Gate
           </div>
-          <p className="text-[11px] text-amber-200/80 leading-relaxed">
+          <p className="text-[11px] text-[var(--status-warning-text)]/90 leading-relaxed font-sans">
             Running verification will build two isolated ephemeral virtual environments (baseline and candidate), invoke pip install, and execute test commands / probes against the target codebase.
           </p>
-          <label className="flex items-start gap-2 pt-1 text-xs text-slate-200 cursor-pointer select-none">
+          <label className="flex items-start gap-2 pt-1 text-xs text-[var(--foreground)] cursor-pointer select-none">
             <input
               type="checkbox"
               required
               checked={confirmExecution}
               onChange={(e) => setConfirmExecution(e.target.checked)}
               disabled={busy}
-              className="mt-0.5 rounded border-amber-600/70 bg-[#121520] text-amber-500 focus:ring-0 cursor-pointer"
+              className="mt-0.5 rounded border-[var(--border)] bg-[var(--card)] text-[var(--primary)] focus:ring-0 cursor-pointer"
             />
-            <span className="font-medium text-amber-200">
+            <span className="font-semibold text-[var(--status-warning-text)]">
               I authorize GemForge to execute repository tests and compatibility checks in isolated environments on this machine.
             </span>
           </label>
         </div>
 
-        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#1c202e]">
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-[var(--border)]">
           <Button type="button" variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button
             type="submit"
             disabled={busy || !confirmExecution || !dependency.trim()}
-            variant="default"
-            className="gap-2 bg-indigo-600 hover:bg-indigo-500"
+            className="gap-2"
           >
             {busy ? (
               <>
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
                 <span>Running Verification (this may take 1-3m)…</span>
               </>
             ) : (

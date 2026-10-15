@@ -39,28 +39,28 @@ export function CodeBlock({
   return (
     <div
       className={cn(
-        "rounded-lg border border-[#1e2333] bg-[#090b10] text-xs font-mono overflow-hidden shadow-inner",
+        "rounded-lg border border-[var(--code-border)] bg-[var(--code-bg)] text-xs font-mono overflow-hidden shadow-xs transition-colors",
         className,
       )}
     >
       {(title || badge || sha256 || collapsible) && (
-        <div className="flex items-center justify-between border-b border-[#1b1f2e] bg-[#0d0f17] px-3 py-1.5 text-slate-400">
+        <div className="flex items-center justify-between border-b border-[var(--code-border)] bg-[var(--muted)]/50 px-3 py-1.5 text-[var(--muted-foreground)]">
           <div className="flex items-center gap-2 truncate">
-            {title && <span className="font-medium text-slate-300">{title}</span>}
+            {title && <span className="font-semibold text-[var(--foreground)]">{title}</span>}
             {language && (
-              <span className="rounded bg-[#171a26] px-1.5 py-0.5 text-[10px] text-slate-400">
+              <span className="rounded bg-[var(--card)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)] border border-[var(--border)]">
                 {language}
               </span>
             )}
             {badge && (
-              <span className="rounded bg-indigo-950/70 border border-indigo-800/50 px-1.5 py-0.5 text-[10px] text-indigo-300">
+              <span className="rounded bg-[#C8D9E6]/40 dark:bg-[#0A2472] border border-[#567C8D]/30 dark:border-[#123499] px-1.5 py-0.5 text-[10px] text-[var(--foreground)] dark:text-[#A5C2FF]">
                 {badge}
               </span>
             )}
             {sha256 && (
               <span
                 title={`SHA-256: ${sha256}`}
-                className="text-[10px] text-slate-500 truncate max-w-[140px]"
+                className="text-[10px] text-[var(--muted-foreground)] truncate max-w-[140px]"
               >
                 sha:{sha256.slice(0, 8)}…
               </span>
@@ -71,7 +71,7 @@ export function CodeBlock({
               <button
                 type="button"
                 onClick={() => setCollapsed(!collapsed)}
-                className="p-1 hover:text-slate-200 transition-colors cursor-pointer"
+                className="p-1 hover:text-[var(--foreground)] transition-colors cursor-pointer"
                 title={collapsed ? "Expand" : "Collapse"}
               >
                 {collapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
@@ -80,13 +80,13 @@ export function CodeBlock({
             <button
               type="button"
               onClick={handleCopy}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-[#1a1e2c] hover:text-slate-200 transition-colors cursor-pointer"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] hover:bg-[var(--card)] hover:text-[var(--foreground)] transition-colors cursor-pointer border border-transparent hover:border-[var(--border)]"
               title="Copy to clipboard"
             >
               {copied ? (
                 <>
-                  <Check size={12} className="text-emerald-400" />
-                  <span className="text-emerald-400">Copied</span>
+                  <Check size={12} className="text-emerald-500" />
+                  <span className="text-emerald-500 font-medium">Copied</span>
                 </>
               ) : (
                 <>
@@ -101,7 +101,7 @@ export function CodeBlock({
       {!collapsed && (
         <pre
           className={cn(
-            "p-3 overflow-x-auto text-slate-300 leading-relaxed font-mono whitespace-pre",
+            "p-3 overflow-x-auto text-[var(--code-text)] leading-relaxed font-mono whitespace-pre selection:bg-[#567C8D]/25 dark:selection:bg-[#123499]/50",
             maxHeight,
           )}
         >

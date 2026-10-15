@@ -37,14 +37,14 @@ export function OverviewPage({
   if (!capsule) {
     return (
       <div className="py-16 px-4 max-w-4xl mx-auto text-center space-y-6">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-950/50 border border-indigo-800/40 text-indigo-400">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--muted)] border border-[var(--border)] text-[var(--muted-foreground)]">
           <Layers size={28} />
         </div>
         <div className="space-y-2 max-w-lg mx-auto">
-          <h2 className="text-xl font-bold tracking-tight text-slate-100">
+          <h2 className="text-xl font-bold tracking-tight text-[var(--foreground)]">
             No Repository Analysis Loaded
           </h2>
-          <p className="text-xs text-slate-400 leading-relaxed">
+          <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
             Run a local repository scan or load the verified LinkWatch Phase 3 regression fixture to inspect dependency resilience.
           </p>
         </div>
@@ -90,20 +90,20 @@ export function OverviewPage({
   return (
     <div className="space-y-6 pb-12">
       {/* Repository Context Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[#1e2333] bg-[#0c0e15]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs transition-colors">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-200">Current Target</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-semibold text-[var(--foreground)]">Current Target</span>
             {isDemo && (
               <Badge variant="indigo" className="text-[10px] py-0">
                 Demo Fixture · LinkWatch
               </Badge>
             )}
-            <Badge variant="outline" className="text-[10px] py-0 text-slate-400 font-mono">
+            <Badge variant="outline" className="text-[10px] py-0 text-[var(--muted-foreground)] font-mono">
               Schema {capsule.schema_version}
             </Badge>
           </div>
-          <div className="font-mono text-xs text-indigo-300 break-all">
+          <div className="font-mono text-xs text-[#2F4156] dark:text-[#A5C2FF] font-semibold break-all">
             {capsule.repository}
           </div>
         </div>
@@ -113,14 +113,14 @@ export function OverviewPage({
             size="sm"
             variant="outline"
             onClick={onOpenScanModal}
-            className="text-xs h-8 border-[#262c3e] text-slate-300"
+            className="text-xs h-8"
           >
             Re-scan Target
           </Button>
           <Button
             size="sm"
             onClick={onOpenVerificationModal}
-            className="text-xs h-8 bg-indigo-600 hover:bg-indigo-500"
+            className="text-xs h-8"
           >
             Run Verification
           </Button>
@@ -130,24 +130,24 @@ export function OverviewPage({
       {/* Primary Status Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Declarations & Unique Packages */}
-        <Card className="panel-card-hover border-[#1d2232] bg-[#0c0e16]">
+        <Card className="theme-card-hover border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">Declared Packages</span>
-              <Package size={15} className="text-slate-500" />
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">Declared Packages</span>
+              <Package size={15} className="text-[var(--muted-foreground)]" />
             </div>
             <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-2xl font-bold font-mono tracking-tight text-slate-100">
+              <span className="text-2xl font-bold font-mono tracking-tight text-[var(--foreground)]">
                 {uniquePackages.length}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-[var(--muted-foreground)]">
                 ({capsule.dependencies.length} total specs)
               </span>
             </div>
           </CardHeader>
-          <CardContent className="text-xs text-slate-400 pt-1">
-            <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-              <FileText size={12} className="text-slate-500" />
+          <CardContent className="text-xs text-[var(--muted-foreground)] pt-1">
+            <div className="flex items-center gap-1.5 text-[11px] truncate">
+              <FileText size={12} className="text-[var(--muted-foreground)] shrink-0" />
               <span>Across {manifestFiles.length} manifests ({manifestFiles.join(", ")})</span>
             </div>
           </CardContent>
@@ -155,48 +155,48 @@ export function OverviewPage({
 
         {/* Identified Risks */}
         <Card
-          className={`panel-card-hover border-[#1d2232] bg-[#0c0e16] ${
-            riskCounts.total > 0 ? "border-amber-900/30" : ""
+          className={`theme-card-hover border-[var(--border)] bg-[var(--card)] ${
+            riskCounts.total > 0 ? "border-amber-400/50 dark:border-amber-500/40" : ""
           }`}
         >
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">Identified Risks</span>
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">Identified Risks</span>
               <AlertTriangle
                 size={15}
-                className={riskCounts.total > 0 ? "text-amber-400" : "text-slate-500"}
+                className={riskCounts.total > 0 ? "text-amber-500" : "text-[var(--muted-foreground)]"}
               />
             </div>
             <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-2xl font-bold font-mono tracking-tight text-amber-300">
+              <span className="text-2xl font-bold font-mono tracking-tight text-amber-600 dark:text-amber-400">
                 {riskCounts.total}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-[var(--muted-foreground)]">
                 ({riskCounts.proven} proven)
               </span>
             </div>
           </CardHeader>
-          <CardContent className="text-xs text-slate-400 pt-1">
-            <div className="flex items-center gap-2 text-[11px]">
+          <CardContent className="text-xs pt-1">
+            <div className="flex items-center gap-2 text-[11px] flex-wrap">
               {riskCounts.conflict > 0 && (
-                <span className="text-red-400 font-medium">{riskCounts.conflict} conflicts</span>
+                <span className="text-rose-600 dark:text-rose-400 font-semibold">{riskCounts.conflict} conflicts</span>
               )}
               {riskCounts.uncertainty > 0 && (
-                <span className="text-amber-400 font-medium">{riskCounts.uncertainty} uncertain</span>
+                <span className="text-amber-600 dark:text-amber-400 font-semibold">{riskCounts.uncertainty} uncertain</span>
               )}
               {riskCounts.directRef > 0 && (
-                <span className="text-blue-400 font-medium">{riskCounts.directRef} direct refs</span>
+                <span className="text-blue-600 dark:text-sky-400 font-semibold">{riskCounts.directRef} direct refs</span>
               )}
             </div>
           </CardContent>
         </Card>
 
         {/* AI Analysis Status */}
-        <Card className="panel-card-hover border-[#1d2232] bg-[#0c0e16]">
+        <Card className="theme-card-hover border-[var(--border)] bg-[var(--card)]">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">Gemma 4 Intelligence</span>
-              <Sparkles size={15} className="text-indigo-400" />
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">Gemma 4 Intelligence</span>
+              <Sparkles size={15} className="text-[#567C8D] dark:text-[#7DD3FC]" />
             </div>
             <div className="pt-1">
               <Badge
@@ -213,8 +213,8 @@ export function OverviewPage({
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="text-xs text-slate-400 pt-2">
-            <div className="text-[11px] text-slate-400 truncate">
+          <CardContent className="text-xs text-[var(--muted-foreground)] pt-2">
+            <div className="text-[11px] truncate">
               {capsule.recommendations.length > 0
                 ? `${capsule.recommendations.length} migration proposal(s) generated`
                 : "No AI migrations requested"}
@@ -224,25 +224,25 @@ export function OverviewPage({
 
         {/* Verification Verdict */}
         <Card
-          className={`panel-card-hover border-[#1d2232] bg-[#0c0e16] ${
+          className={`theme-card-hover border-[var(--border)] bg-[var(--card)] ${
             isRegression
-              ? "border-rose-900/50 bg-rose-950/10"
+              ? "border-rose-400/60 dark:border-rose-500/50"
               : isVerified
-              ? "border-emerald-900/50"
+              ? "border-emerald-400/60 dark:border-emerald-500/50"
               : ""
           }`}
         >
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-400">Verification Laboratory</span>
+              <span className="text-xs font-medium text-[var(--muted-foreground)]">Verification Laboratory</span>
               <FlaskConical
                 size={15}
                 className={
                   isRegression
-                    ? "text-rose-400"
+                    ? "text-rose-500"
                     : isVerified
-                    ? "text-emerald-400"
-                    : "text-slate-500"
+                    ? "text-emerald-500"
+                    : "text-[var(--muted-foreground)]"
                 }
               />
             </div>
@@ -263,8 +263,8 @@ export function OverviewPage({
               </Badge>
             </div>
           </CardHeader>
-          <CardContent className="text-xs text-slate-400 pt-2">
-            <div className="text-[11px] text-slate-400 truncate">
+          <CardContent className="text-xs text-[var(--muted-foreground)] pt-2">
+            <div className="text-[11px] truncate">
               {capsule.verification.comparisons.length > 0
                 ? `${capsule.verification.comparisons.length} baseline-vs-candidate checks`
                 : "No isolated execution run yet"}
@@ -275,21 +275,21 @@ export function OverviewPage({
 
       {/* Verification Verdict Highlight Banner (Critical Evidence Callout) */}
       {isRegression && (
-        <div className="rounded-xl border border-rose-900/60 bg-[#160c11] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="rounded-xl border border-[var(--status-error-border)] bg-[var(--status-error-bg)] p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-rose-950/60 border border-rose-800/60 text-rose-400 shrink-0 mt-0.5">
+            <div className="p-2 rounded-lg bg-[var(--card)] border border-[var(--status-error-border)] text-rose-600 dark:text-rose-400 shrink-0 mt-0.5 shadow-xs">
               <ShieldAlert size={18} />
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-rose-300">
+                <span className="text-sm font-semibold text-[var(--status-error-text)]">
                   Regression Detected During Compatibility Verification
                 </span>
                 <Badge variant="conflict" className="text-[10px]">
                   Action Required
                 </Badge>
               </div>
-              <p className="text-xs text-rose-200/80 leading-relaxed max-w-2xl">
+              <p className="text-xs text-[var(--status-error-text)]/90 leading-relaxed max-w-2xl">
                 Baseline checks passed, but candidate virtual environment exhibited behavior regressions on model compatibility probes. This demonstrates why AI-generated recommendations must not be trusted without execution evidence.
               </p>
             </div>
@@ -298,7 +298,7 @@ export function OverviewPage({
             size="sm"
             variant="danger"
             onClick={() => onNavigate("verification")}
-            className="shrink-0 gap-1.5 text-xs"
+            className="shrink-0 gap-1.5 text-xs shadow-xs"
           >
             <span>Inspect Evidence</span>
             <ArrowRight size={13} />
@@ -312,10 +312,10 @@ export function OverviewPage({
         <div className="lg:col-span-2 space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <h3 className="text-sm font-semibold text-slate-200">
+              <h3 className="text-sm font-semibold text-[var(--foreground)]">
                 Discovered Dependency Risks
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[var(--muted-foreground)]">
                 Empirical manifest findings categorized by certainty and conflict type
               </p>
             </div>
@@ -323,7 +323,7 @@ export function OverviewPage({
               variant="ghost"
               size="sm"
               onClick={() => onNavigate("explorer")}
-              className="text-xs text-indigo-400 hover:text-indigo-300 gap-1"
+              className="text-xs gap-1"
             >
               <span>Explore all</span>
               <ArrowRight size={12} />
@@ -332,18 +332,18 @@ export function OverviewPage({
 
           <div className="space-y-2.5">
             {capsule.risks.length === 0 ? (
-              <div className="rounded-xl border border-[#1e2333] bg-[#0c0e15] p-6 text-center text-xs text-slate-400">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 text-center text-xs text-[var(--muted-foreground)]">
                 No risks detected by the implemented static checks. This does not establish universal safety.
               </div>
             ) : (
               capsule.risks.map((risk, idx) => (
                 <div
                   key={idx}
-                  className="rounded-xl border border-[#1e2333] bg-[#0c0e16] p-4 transition-colors hover:border-[#2a3045] space-y-2"
+                  className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 transition-all hover:border-[var(--muted-foreground)] space-y-2 shadow-xs"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm font-bold text-slate-100">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-bold text-[var(--foreground)]">
                         {risk.package}
                       </span>
                       <Badge
@@ -366,12 +366,12 @@ export function OverviewPage({
                       </Badge>
                     </div>
 
-                    <div className="text-[11px] text-slate-500 font-mono">
+                    <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
                       {risk.sources.map((s) => `${s.file}:${s.line || 1}`).join(", ")}
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-300 leading-relaxed bg-[#090b10] p-2.5 rounded-lg border border-[#1a1e2b] font-mono text-[11px]">
+                  <p className="text-xs font-mono text-[11px] leading-relaxed bg-[var(--code-bg)] text-[var(--code-text)] p-2.5 rounded-lg border border-[var(--code-border)]">
                     {risk.evidence}
                   </p>
                 </div>
@@ -383,27 +383,27 @@ export function OverviewPage({
         {/* Right Col: AI & Verification Status Summary */}
         <div className="space-y-4">
           <div className="space-y-0.5">
-            <h3 className="text-sm font-semibold text-slate-200">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">
               Resilience Pipeline
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-[var(--muted-foreground)]">
               Stages of the GemForge verification lifecycle
             </p>
           </div>
 
-          <Card className="border-[#1e2333] bg-[#0c0e16] divide-y divide-[#171b28]">
+          <Card className="border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)] shadow-xs">
             {/* Stage 1: Static AST & Manifest Scan */}
             <div className="p-4 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-200 flex items-center gap-2">
-                  <CheckCircle2 size={14} className="text-emerald-400" />
+                <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-2">
+                  <CheckCircle2 size={14} className="text-emerald-500" />
                   1. Manifest & AST Parsing
                 </span>
                 <Badge variant="success" className="text-[10px] py-0">
                   Completed
                 </Badge>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
                 {capsule.dependencies.length} declared packages scanned, {capsule.usages.length} Python AST usage locations resolved.
               </p>
             </div>
@@ -411,8 +411,8 @@ export function OverviewPage({
             {/* Stage 2: Gemma 4 Migration Inference */}
             <div className="p-4 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-200 flex items-center gap-2">
-                  <Sparkles size={14} className="text-indigo-400" />
+                <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#567C8D] dark:text-[#7DD3FC]" />
                   2. Gemma 4 Inference
                 </span>
                 <Badge
@@ -422,7 +422,7 @@ export function OverviewPage({
                   {capsule.ai_status}
                 </Badge>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
                 {capsule.inferences.length > 0
                   ? `Executed ${capsule.inferences.length} inference cycle(s) with prompt & response SHA-256 telemetry.`
                   : "AI recommendations not requested for this scan."}
@@ -432,7 +432,7 @@ export function OverviewPage({
                   size="sm"
                   variant="ghost"
                   onClick={() => onNavigate("migration")}
-                  className="text-xs text-indigo-400 h-6 px-0 hover:text-indigo-300"
+                  className="text-xs h-6 px-0 font-medium"
                 >
                   View migration proposals →
                 </Button>
@@ -442,11 +442,11 @@ export function OverviewPage({
             {/* Stage 3: Isolated Virtualenv Verification */}
             <div className="p-4 space-y-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-200 flex items-center gap-2">
+                <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-2">
                   <FlaskConical
                     size={14}
                     className={
-                      isRegression ? "text-rose-400" : isVerified ? "text-emerald-400" : "text-slate-500"
+                      isRegression ? "text-rose-500" : isVerified ? "text-emerald-500" : "text-[var(--muted-foreground)]"
                     }
                   />
                   3. Isolated Laboratory
@@ -458,7 +458,7 @@ export function OverviewPage({
                   {capsule.verification.status}
                 </Badge>
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
                 {capsule.verification.reason}
               </p>
               {capsule.verification.status !== "not_run" && (
@@ -466,7 +466,7 @@ export function OverviewPage({
                   size="sm"
                   variant="ghost"
                   onClick={() => onNavigate("verification")}
-                  className="text-xs text-indigo-400 h-6 px-0 hover:text-indigo-300"
+                  className="text-xs h-6 px-0 font-medium"
                 >
                   Inspect side-by-side execution →
                 </Button>
@@ -474,12 +474,12 @@ export function OverviewPage({
             </div>
 
             {/* Timestamp & Limitations note */}
-            <div className="p-4 bg-[#090b10] text-[11px] text-slate-500 space-y-1.5">
+            <div className="p-4 bg-[var(--muted)]/50 text-[11px] text-[var(--muted-foreground)] space-y-1.5">
               <div className="flex items-center gap-1.5">
-                <Clock size={12} className="text-slate-500" />
+                <Clock size={12} className="text-[var(--muted-foreground)]" />
                 <span>Generated: {new Date(capsule.generated_at).toLocaleString()}</span>
               </div>
-              <div className="text-[10px] text-slate-500 leading-normal">
+              <div className="text-[10px] leading-normal">
                 {capsule.limitations.length} analysis limitations noted in capsule contract.
               </div>
             </div>

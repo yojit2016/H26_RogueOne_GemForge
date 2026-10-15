@@ -67,25 +67,25 @@ export function ExportModal({ open, onClose, capsule, analysisId }: ExportModalP
       description="Download complete evidence-backed audit capsule for offline archiving or pull requests."
       maxWidth="max-w-md"
     >
-      <div className="space-y-4">
-        <div className="rounded-xl border border-[#1e2333] bg-[#0a0c12] p-4 space-y-2 text-xs">
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Schema Version:</span>
-            <span className="font-mono text-slate-200">{capsule.schema_version}</span>
+      <div className="space-y-4 text-[var(--foreground)]">
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--muted)]/50 p-4 space-y-2 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--muted-foreground)]">Schema Version:</span>
+            <span className="font-mono font-semibold">{capsule.schema_version}</span>
           </div>
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Target Repository:</span>
-            <span className="font-mono text-slate-200 truncate max-w-[200px]" title={capsule.repository}>
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--muted-foreground)]">Target Repository:</span>
+            <span className="font-mono truncate max-w-[200px]" title={capsule.repository}>
               {capsule.repository.split(/[/\\]/).pop() || capsule.repository}
             </span>
           </div>
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Verification Verdict:</span>
-            <span className="font-mono text-indigo-300">{capsule.verification.verdict}</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--muted-foreground)]">Verification Verdict:</span>
+            <span className="font-mono font-semibold text-[#567C8D] dark:text-[#7DD3FC]">{capsule.verification.verdict}</span>
           </div>
-          <div className="flex items-center justify-between text-slate-300">
-            <span className="text-slate-400">Generated At:</span>
-            <span className="font-mono text-slate-400">
+          <div className="flex items-center justify-between">
+            <span className="text-[var(--muted-foreground)]">Generated At:</span>
+            <span className="font-mono text-[var(--muted-foreground)]">
               {new Date(capsule.generated_at).toLocaleString()}
             </span>
           </div>
@@ -94,44 +94,46 @@ export function ExportModal({ open, onClose, capsule, analysisId }: ExportModalP
         <div className="space-y-2">
           <Button
             onClick={handleDownloadJson}
-            className="w-full justify-between h-11 bg-[#141824] hover:bg-[#1c2234] border border-[#272f44] text-slate-200"
+            variant="outline"
+            className="w-full justify-between h-12 border-[var(--border)] hover:bg-[var(--muted)]"
           >
             <div className="flex items-center gap-2.5">
-              <FileJson size={16} className="text-indigo-400" />
+              <FileJson size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
               <div className="text-left">
                 <div className="text-xs font-semibold">Download Machine JSON</div>
-                <div className="text-[10px] text-slate-400 font-normal">Full machine-readable ExitCapsule payload</div>
+                <div className="text-[10px] text-[var(--muted-foreground)] font-normal">Full machine-readable ExitCapsule payload</div>
               </div>
             </div>
-            <Download size={14} className="text-slate-400" />
+            <Download size={14} className="text-[var(--muted-foreground)]" />
           </Button>
 
           <Button
             onClick={handleDownloadMarkdown}
-            className="w-full justify-between h-11 bg-[#141824] hover:bg-[#1c2234] border border-[#272f44] text-slate-200"
+            variant="outline"
+            className="w-full justify-between h-12 border-[var(--border)] hover:bg-[var(--muted)]"
           >
             <div className="flex items-center gap-2.5">
-              <FileText size={16} className="text-blue-400" />
+              <FileText size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
               <div className="text-left">
                 <div className="text-xs font-semibold">Download Human Markdown Report</div>
-                <div className="text-[10px] text-slate-400 font-normal">Formatted evidence report for PR review</div>
+                <div className="text-[10px] text-[var(--muted-foreground)] font-normal">Formatted evidence report for PR review</div>
               </div>
             </div>
-            <Download size={14} className="text-slate-400" />
+            <Download size={14} className="text-[var(--muted-foreground)]" />
           </Button>
         </div>
 
-        <div className="pt-2 border-t border-[#1c202e] flex items-center justify-between">
+        <div className="pt-2 border-t border-[var(--border)] flex items-center justify-between">
           <Button
             variant="ghost"
             size="sm"
             onClick={handleCopyJson}
-            className="text-xs gap-1.5 text-slate-400 hover:text-slate-200"
+            className="text-xs gap-1.5"
           >
             {copied ? (
               <>
-                <CheckCircle2 size={13} className="text-emerald-400" />
-                <span className="text-emerald-400">Copied to Clipboard</span>
+                <CheckCircle2 size={13} className="text-emerald-500" />
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Copied to Clipboard</span>
               </>
             ) : (
               <>

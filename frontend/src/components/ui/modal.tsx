@@ -35,7 +35,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+        className="fixed inset-0 bg-black/40 dark:bg-black/75 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -45,21 +45,21 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "relative w-full rounded-2xl border border-[#23283b] bg-[#0d0f17] p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-150 z-10 my-auto",
+          "relative w-full rounded-2xl border border-[var(--border)] bg-[var(--card)] p-6 shadow-2xl transition-all animate-in zoom-in-95 duration-150 z-10 my-auto text-[var(--foreground)]",
           maxWidth,
         )}
       >
-        <div className="flex items-start justify-between pb-4 border-b border-[#1c202e]">
+        <div className="flex items-start justify-between pb-4 border-b border-[var(--border)]">
           <div>
-            <h2 className="text-base font-semibold text-slate-100">{title}</h2>
+            <h2 className="text-base font-semibold text-[var(--foreground)]">{title}</h2>
             {description && (
-              <p className="mt-1 text-xs text-slate-400">{description}</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">{description}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-[#1a1e2b] hover:text-slate-200 transition-colors cursor-pointer"
+            className="rounded-lg p-1.5 text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
             aria-label="Close"
           >
             <X size={16} />

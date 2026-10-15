@@ -84,7 +84,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col font-sans transition-colors duration-200">
       {/* Top Navbar */}
       <Navbar
         activePage={activePage}

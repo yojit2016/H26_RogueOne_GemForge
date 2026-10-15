@@ -7,15 +7,24 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-slate-700 bg-slate-800 text-slate-200",
-        secondary: "border-slate-800 bg-slate-900/60 text-slate-400",
-        outline: "border-slate-700 text-slate-300",
-        conflict: "border-red-900/60 bg-red-950/40 text-red-300",
-        warning: "border-amber-900/60 bg-amber-950/40 text-amber-300",
-        success: "border-emerald-900/60 bg-emerald-950/40 text-emerald-300",
-        info: "border-blue-900/60 bg-blue-950/40 text-blue-300",
-        indigo: "border-indigo-900/60 bg-indigo-950/40 text-indigo-300",
-        purple: "border-purple-900/60 bg-purple-950/40 text-purple-300",
+        default:
+          "border-[var(--border)] bg-[var(--muted)] text-[var(--foreground)]",
+        secondary:
+          "border-[var(--border)] bg-[var(--card)] text-[var(--muted-foreground)]",
+        outline:
+          "border-[var(--border)] bg-transparent text-[var(--foreground)]",
+        conflict:
+          "border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-text)] font-semibold",
+        warning:
+          "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)] font-semibold",
+        success:
+          "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-text)] font-semibold",
+        info:
+          "border-[var(--status-info-border)] bg-[var(--status-info-bg)] text-[var(--status-info-text)]",
+        indigo:
+          "border-[#C8D9E6] bg-[#C8D9E6]/30 text-[#2F4156] dark:border-[#123499] dark:bg-[#0A2472]/60 dark:text-[#A5C2FF]",
+        purple:
+          "border-[#567C8D] bg-[#567C8D]/15 text-[#2F4156] dark:border-[#38BDF8]/40 dark:bg-[#0A2472]/80 dark:text-[#7DD3FC]",
       },
     },
     defaultVariants: {

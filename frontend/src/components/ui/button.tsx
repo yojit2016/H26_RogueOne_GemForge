@@ -4,22 +4,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 select-none cursor-pointer",
   {
     variants: {
       variant: {
         default:
-          "bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 active:bg-indigo-700 border border-indigo-500/40",
+          "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs hover:opacity-90 active:scale-[0.98]",
         secondary:
-          "bg-[#161922] text-slate-200 hover:bg-[#1f2432] active:bg-[#131620] border border-[#2b3042]",
+          "bg-[var(--secondary)] text-[var(--secondary-foreground)] border border-[var(--border)] hover:opacity-90 active:scale-[0.98]",
         outline:
-          "border border-slate-700/80 bg-transparent text-slate-200 hover:bg-slate-800/60 hover:text-white",
+          "border border-[var(--border)] bg-transparent text-[var(--foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]",
         ghost:
-          "bg-transparent text-slate-300 hover:bg-slate-800/60 hover:text-white",
+          "bg-transparent text-[var(--muted-foreground)] hover:bg-[var(--muted)] hover:text-[var(--foreground)]",
         danger:
-          "bg-rose-950/40 text-rose-300 border border-rose-900/60 hover:bg-rose-900/60 active:bg-rose-950",
+          "bg-[var(--status-error-bg)] text-[var(--status-error-text)] border border-[var(--status-error-border)] hover:opacity-90",
         subtle:
-          "bg-slate-800/80 text-slate-200 hover:bg-slate-700/80 border border-slate-700/50",
+          "bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--border)] border border-[var(--border)]",
       },
       size: {
         default: "h-9 px-3.5 py-1.5",

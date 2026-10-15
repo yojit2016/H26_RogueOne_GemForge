@@ -36,7 +36,7 @@ export function VerificationLaboratoryPage({
 
   if (!capsule) {
     return (
-      <div className="py-16 text-center text-slate-400 text-xs">
+      <div className="py-16 text-center text-[var(--muted-foreground)] text-xs">
         No active capsule loaded. Scan a repository to view verification evidence.
       </div>
     )
@@ -70,20 +70,20 @@ export function VerificationLaboratoryPage({
     <div className="space-y-6 pb-12">
       {/* Centerpiece Verdict Hero Banner */}
       <div
-        className={`rounded-2xl border p-6 space-y-4 shadow-xl ${
+        className={`rounded-2xl border p-6 space-y-4 shadow-sm transition-colors ${
           isRegression
-            ? "border-rose-900/60 bg-gradient-to-b from-[#180e14] to-[#0d0910]"
+            ? "border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-text)]"
             : isVerified
-            ? "border-emerald-900/60 bg-gradient-to-b from-[#0c1813] to-[#090e0c]"
+            ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-text)]"
             : verdict === "not_run"
-            ? "border-[#1e2333] bg-[#0c0e16]"
-            : "border-amber-900/50 bg-[#16120b]"
+            ? "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+            : "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]"
         }`}
       >
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xs uppercase font-mono tracking-wider text-slate-400">
+              <span className="text-xs uppercase font-mono tracking-wider opacity-80">
                 Verification Laboratory Verdict
               </span>
               <Badge
@@ -96,19 +96,19 @@ export function VerificationLaboratoryPage({
                     ? "secondary"
                     : "warning"
                 }
-                className="text-xs font-mono font-bold py-1 px-3"
+                className="text-xs font-mono font-bold py-1 px-3 shadow-xs"
               >
                 {verdict.toUpperCase().replace(/_/g, " ")}
               </Badge>
 
               {ver.cleanup_completed && (
-                <Badge variant="outline" className="text-[10px] text-slate-400 py-0.5">
+                <Badge variant="outline" className="text-[10px] py-0.5">
                   Ephemeral Virtualenvs Purged
                 </Badge>
               )}
             </div>
 
-            <p className="text-sm font-semibold text-slate-200 leading-relaxed max-w-3xl">
+            <p className="text-sm font-semibold leading-relaxed max-w-3xl">
               {ver.reason}
             </p>
           </div>
@@ -116,7 +116,7 @@ export function VerificationLaboratoryPage({
           <div className="flex items-center gap-2 self-start lg:self-center shrink-0">
             <Button
               onClick={onOpenVerificationModal}
-              className="gap-2 bg-indigo-600 hover:bg-indigo-500 text-white shadow-md"
+              className="gap-2 shadow-xs"
             >
               <Play size={14} />
               <span>Run Laboratory Verification</span>
@@ -126,16 +126,16 @@ export function VerificationLaboratoryPage({
 
         {/* Execution Metadata Bar */}
         {(ver.started_at || ver.completed_at || ver.snapshot_sha256) && (
-          <div className="pt-3 border-t border-[#23283c] flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-slate-400">
+          <div className="pt-3 border-t border-current/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono opacity-80">
             {ver.started_at && (
               <div className="flex items-center gap-1.5">
-                <Clock size={12} className="text-slate-500" />
+                <Clock size={12} />
                 <span>Started: {new Date(ver.started_at).toLocaleTimeString()}</span>
               </div>
             )}
             {ver.completed_at && ver.started_at && (
               <div className="flex items-center gap-1.5">
-                <Clock size={12} className="text-slate-500" />
+                <Clock size={12} />
                 <span>
                   Duration:{" "}
                   {(
@@ -147,9 +147,9 @@ export function VerificationLaboratoryPage({
               </div>
             )}
             {ver.snapshot_sha256 && (
-              <div className="flex items-center gap-1.5 text-slate-400">
+              <div className="flex items-center gap-1.5">
                 <span>Snapshot:</span>
-                <span className="text-slate-300" title={`SHA-256: ${ver.snapshot_sha256}`}>
+                <span title={`SHA-256: ${ver.snapshot_sha256}`}>
                   {ver.snapshot_sha256.slice(0, 16)}…
                 </span>
               </div>
@@ -159,13 +159,13 @@ export function VerificationLaboratoryPage({
       </div>
 
       {verdict === "not_run" ? (
-        <div className="rounded-xl border border-[#1e2333] bg-[#0c0e15] p-12 text-center space-y-4">
-          <FlaskConical size={32} className="mx-auto text-slate-600" />
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-12 text-center space-y-4">
+          <FlaskConical size={32} className="mx-auto text-[var(--muted-foreground)]" />
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-slate-200">
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">
               No Repository Code Has Been Executed
             </h3>
-            <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <p className="text-xs text-[var(--muted-foreground)] max-w-md mx-auto">
               Compatibility testing runs commands inside isolated dual virtual environments and requires explicit user consent. Click below to launch verification.
             </p>
           </div>
@@ -179,51 +179,51 @@ export function VerificationLaboratoryPage({
           {/* Side-by-Side Baseline vs Candidate Environment Comparison */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Baseline Environment */}
-            <div className="rounded-xl border border-[#1e2333] bg-[#0c0e16] p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-[#1b2030]">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-4 shadow-xs transition-colors">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-slate-400" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
                     Baseline Environment
                   </span>
                 </div>
-                <Badge variant="outline" className="text-[10px] font-mono text-slate-400">
+                <Badge variant="outline" className="text-[10px] font-mono">
                   Status: {ver.original_status}
                 </Badge>
               </div>
 
               {baseline ? (
                 <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Python Version:</span>
-                    <span className="text-slate-200 font-semibold">{baseline.python_version || "N/A"}</span>
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="text-[var(--muted-foreground)]">Python Version:</span>
+                    <span className="text-[var(--foreground)] font-semibold">{baseline.python_version || "N/A"}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Installed Packages:</span>
-                    <span className="text-slate-200">{Object.keys(baseline.installed_packages).length} packages</span>
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="text-[var(--muted-foreground)]">Installed Packages:</span>
+                    <span className="text-[var(--foreground)]">{Object.keys(baseline.installed_packages).length} packages</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Test Suite Outcomes:</span>
-                    <span className="text-slate-200">
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="text-[var(--muted-foreground)]">Test Suite Outcomes:</span>
+                    <span className="text-[var(--foreground)]">
                       {Object.values(baseline.test_outcomes).filter((s) => s === "passed").length} passed,{" "}
-                      <span className="text-rose-400 font-semibold">
+                      <span className="text-rose-600 dark:text-rose-400 font-semibold">
                         {Object.values(baseline.test_outcomes).filter((s) => s === "failed").length} failed
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Model Probes:</span>
-                    <span className="text-emerald-400 font-semibold">
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="text-[var(--muted-foreground)]">Model Probes:</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
                       {Object.values(baseline.probe_outcomes).filter((s) => s === "passed").length} of{" "}
                       {Object.keys(baseline.probe_outcomes).length} passed
                     </span>
                   </div>
 
-                  <div className="pt-2 border-t border-[#181c28] space-y-1">
-                    <span className="text-[11px] text-slate-500 font-mono uppercase">
+                  <div className="pt-2 border-t border-[var(--border)] space-y-1">
+                    <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
                       Baseline Requirements
                     </span>
-                    <div className="p-2 rounded bg-[#090b10] border border-[#1b1f2e] max-h-24 overflow-y-auto text-[11px] font-mono text-slate-300 space-y-0.5">
+                    <div className="p-2 rounded bg-[var(--muted)]/50 border border-[var(--border)] max-h-24 overflow-y-auto text-[11px] font-mono text-[var(--foreground)] space-y-0.5">
                       {baseline.install_requirements.map((req, i) => (
                         <div key={i}>{req}</div>
                       ))}
@@ -231,16 +231,16 @@ export function VerificationLaboratoryPage({
                   </div>
                 </div>
               ) : (
-                <div className="text-xs text-slate-500 font-mono">Baseline data not available.</div>
+                <div className="text-xs text-[var(--muted-foreground)] font-mono">Baseline data not available.</div>
               )}
             </div>
 
             {/* Candidate Environment */}
-            <div className="rounded-xl border border-indigo-950/60 bg-[#0d0f1a] p-5 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-indigo-900/30">
+            <div className="rounded-xl border border-[#C8D9E6] dark:border-[#123499]/60 bg-[#EBF3F8] dark:bg-[#071c66] p-5 space-y-4 shadow-xs transition-colors">
+              <div className="flex items-center justify-between pb-3 border-b border-[#C8D9E6] dark:border-[#123499]/40">
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-indigo-400 shadow-[0_0_8px_rgba(99,102,241,0.8)]" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-200">
+                  <div className="h-2 w-2 rounded-full bg-[#567C8D] dark:bg-[#7DD3FC]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#2F4156] dark:text-[#E0EAFF]">
                     Candidate Environment
                   </span>
                 </div>
@@ -253,38 +253,38 @@ export function VerificationLaboratoryPage({
               </div>
 
               {candidate ? (
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Python Version:</span>
-                    <span className="text-slate-200 font-semibold">{candidate.python_version || "N/A"}</span>
+                <div className="space-y-3 text-xs text-[#2F4156] dark:text-[#E0EAFF]">
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="opacity-80">Python Version:</span>
+                    <span className="font-semibold">{candidate.python_version || "N/A"}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Installed Packages:</span>
-                    <span className="text-slate-200">{Object.keys(candidate.installed_packages).length} packages</span>
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="opacity-80">Installed Packages:</span>
+                    <span>{Object.keys(candidate.installed_packages).length} packages</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Test Suite Outcomes:</span>
-                    <span className="text-slate-200">
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="opacity-80">Test Suite Outcomes:</span>
+                    <span>
                       {Object.values(candidate.test_outcomes).filter((s) => s === "passed").length} passed,{" "}
-                      <span className="text-rose-400 font-semibold">
+                      <span className="text-rose-600 dark:text-rose-400 font-semibold">
                         {Object.values(candidate.test_outcomes).filter((s) => s === "failed").length} failed
                       </span>
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-400 font-mono">
-                    <span>Model Probes:</span>
-                    <span className={isRegression ? "text-rose-400 font-bold" : "text-emerald-400"}>
+                  <div className="flex items-center justify-between font-mono">
+                    <span className="opacity-80">Model Probes:</span>
+                    <span className={isRegression ? "text-rose-600 dark:text-rose-400 font-bold" : "text-emerald-600 dark:text-emerald-400"}>
                       {Object.values(candidate.probe_outcomes).filter((s) => s === "passed").length} of{" "}
                       {Object.keys(candidate.probe_outcomes).length} passed
                       {isRegression && " (Regression detected!)"}
                     </span>
                   </div>
 
-                  <div className="pt-2 border-t border-indigo-900/30 space-y-1">
-                    <span className="text-[11px] text-slate-500 font-mono uppercase">
+                  <div className="pt-2 border-t border-[#C8D9E6] dark:border-[#123499]/40 space-y-1">
+                    <span className="text-[11px] opacity-75 font-mono uppercase">
                       Candidate Requirements & Constraints
                     </span>
-                    <div className="p-2 rounded bg-[#090b10] border border-[#1e2336] max-h-24 overflow-y-auto text-[11px] font-mono text-indigo-300 space-y-0.5">
+                    <div className="p-2 rounded bg-[var(--card)] border border-[var(--border)] max-h-24 overflow-y-auto text-[11px] font-mono text-[#2F4156] dark:text-[#D6E2FF] space-y-0.5">
                       {candidate.install_requirements.map((req, i) => (
                         <div key={i}>{req}</div>
                       ))}
@@ -292,13 +292,13 @@ export function VerificationLaboratoryPage({
                   </div>
                 </div>
               ) : (
-                <div className="text-xs text-slate-500 font-mono">Candidate data not available.</div>
+                <div className="text-xs text-[var(--muted-foreground)] font-mono">Candidate data not available.</div>
               )}
             </div>
           </div>
 
           {/* Navigation Tabs for Deep Dive */}
-          <div className="flex items-center gap-2 border-b border-[#1c202e] pb-1">
+          <div className="flex items-center gap-2 border-b border-[var(--border)] pb-1 flex-wrap">
             {[
               { id: "matrix", label: `Comparisons Matrix (${ver.comparisons.length})`, icon: GitCompare },
               { id: "probes", label: "Model Probes Evidence", icon: Cpu },
@@ -313,11 +313,11 @@ export function VerificationLaboratoryPage({
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
                     isActive
-                      ? "bg-[#161a29] text-indigo-300 border border-[#272e45]"
-                      : "text-slate-400 hover:text-slate-200"
+                      ? "bg-[var(--card)] text-[var(--foreground)] font-semibold border border-[var(--border)] shadow-xs"
+                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
                   }`}
                 >
-                  <Icon size={13} className={isActive ? "text-indigo-400" : "text-slate-500"} />
+                  <Icon size={13} className={isActive ? "text-[#567C8D] dark:text-[#7DD3FC]" : "text-[var(--muted-foreground)]"} />
                   <span>{tab.label}</span>
                 </button>
               )
@@ -327,8 +327,8 @@ export function VerificationLaboratoryPage({
           {/* TAB 1: Comparison Matrix */}
           {activeTab === "matrix" && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-                <span className="font-semibold text-slate-300">Filters:</span>
+              <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)] flex-wrap">
+                <span className="font-semibold text-[var(--foreground)]">Filters:</span>
                 {regressions.length > 0 && (
                   <Badge variant="conflict" className="text-[10px]">
                     {regressions.length} Regression(s)
@@ -344,7 +344,7 @@ export function VerificationLaboratoryPage({
                 )}
               </div>
 
-              <div className="rounded-xl border border-[#1e2333] bg-[#0c0e16] divide-y divide-[#171b28] overflow-hidden">
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)] overflow-hidden shadow-xs">
                 {ver.comparisons.map((c, idx) => {
                   const isReg = c.status === "regression"
                   const isBaseFail = c.status === "baseline_failure"
@@ -355,26 +355,26 @@ export function VerificationLaboratoryPage({
                       key={idx}
                       className={`p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs transition-colors ${
                         isReg
-                          ? "bg-rose-950/20 hover:bg-rose-950/30"
-                          : "hover:bg-[#10131f]"
+                          ? "bg-[var(--status-error-bg)]/40 hover:bg-[var(--status-error-bg)]/60"
+                          : "hover:bg-[var(--muted)]/40"
                       }`}
                     >
                       <div className="flex items-center gap-3">
                         {isReg ? (
-                          <XCircle size={16} className="text-rose-400 shrink-0" />
+                          <XCircle size={16} className="text-rose-500 shrink-0" />
                         ) : isBaseFail ? (
-                          <AlertTriangle size={16} className="text-amber-400 shrink-0" />
+                          <AlertTriangle size={16} className="text-amber-500 shrink-0" />
                         ) : isRep ? (
-                          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                          <CheckCircle2 size={16} className="text-emerald-500 shrink-0" />
                         ) : (
-                          <CheckCircle2 size={16} className="text-slate-500 shrink-0" />
+                          <CheckCircle2 size={16} className="text-slate-400 shrink-0" />
                         )}
 
                         <div className="space-y-0.5">
-                          <div className="font-mono font-bold text-slate-200">
+                          <div className="font-mono font-bold text-[var(--foreground)]">
                             {c.check}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[11px] text-[var(--muted-foreground)]">
                             {c.explanation}
                           </div>
                         </div>
@@ -401,7 +401,7 @@ export function VerificationLaboratoryPage({
                           <button
                             type="button"
                             onClick={() => setSelectedCheck(c.check)}
-                            className="text-xs text-indigo-400 hover:text-indigo-300 font-mono cursor-pointer"
+                            className="text-xs text-[#567C8D] dark:text-[#7DD3FC] hover:underline font-mono cursor-pointer"
                           >
                             Inspect logs →
                           </button>
@@ -417,12 +417,12 @@ export function VerificationLaboratoryPage({
           {/* TAB 2: Model Probes Evidence */}
           {activeTab === "probes" && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-[#1e2333] bg-[#0c0e15] text-xs text-slate-300 space-y-1">
-                <div className="font-semibold text-slate-200 flex items-center gap-1.5">
-                  <Cpu size={14} className="text-indigo-400" />
+              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--foreground)] space-y-1 shadow-xs">
+                <div className="font-semibold flex items-center gap-1.5">
+                  <Cpu size={14} className="text-[#567C8D] dark:text-[#7DD3FC]" />
                   Dynamic Model Probes
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
+                <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed">
                   Behavioral compatibility assertions executed against target models (e.g. Pydantic v1 vs v2 whitespace trimming, validation exceptions, defaults).
                 </p>
               </div>
@@ -436,15 +436,15 @@ export function VerificationLaboratoryPage({
                   return (
                     <div
                       key={pi}
-                      className={`rounded-xl border p-4 space-y-3 ${
+                      className={`rounded-xl border p-4 space-y-3 shadow-xs transition-colors ${
                         isRegressionProbe
-                          ? "border-rose-900/60 bg-rose-950/15"
-                          : "border-[#1e2333] bg-[#0c0e16]"
+                          ? "border-[var(--status-error-border)] bg-[var(--status-error-bg)]"
+                          : "border-[var(--border)] bg-[var(--card)]"
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-bold text-slate-100">
+                          <span className="font-mono text-sm font-bold text-[var(--foreground)]">
                             {probe.name}
                           </span>
                           {isRegressionProbe && (
@@ -456,43 +456,43 @@ export function VerificationLaboratoryPage({
 
                         <div className="flex items-center gap-3 text-xs font-mono">
                           <div className="flex items-center gap-1">
-                            <span className="text-slate-500">Baseline:</span>
-                            <span className={baselinePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className="text-[var(--muted-foreground)]">Baseline:</span>
+                            <span className={baselinePassed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
                               {baseline?.probe_outcomes[probe.name] || "not_run"}
                             </span>
                           </div>
-                          <span className="text-slate-600">→</span>
+                          <span className="text-[var(--muted-foreground)]">→</span>
                           <div className="flex items-center gap-1">
-                            <span className="text-slate-500">Candidate:</span>
-                            <span className={candidatePassed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className="text-[var(--muted-foreground)]">Candidate:</span>
+                            <span className={candidatePassed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
                               {candidate?.probe_outcomes[probe.name] || "not_run"}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono bg-[#090b10] p-3 rounded-lg border border-[#191d2a]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono bg-[var(--code-bg)] text-[var(--code-text)] p-3 rounded-lg border border-[var(--code-border)]">
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase">Target Class:</span>
-                          <div className="text-slate-200">
+                          <span className="opacity-75 text-[10px] uppercase block">Target Class:</span>
+                          <div className="font-semibold">
                             {probe.module}.{probe.class_name}
                           </div>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase">Kwargs Input:</span>
-                          <div className="text-slate-300 truncate" title={JSON.stringify(probe.kwargs)}>
+                          <span className="opacity-75 text-[10px] uppercase block">Kwargs Input:</span>
+                          <div className="truncate" title={JSON.stringify(probe.kwargs)}>
                             {JSON.stringify(probe.kwargs)}
                           </div>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase">Expected Attributes:</span>
-                          <div className="text-slate-300">
+                          <span className="opacity-75 text-[10px] uppercase block">Expected Attributes:</span>
+                          <div>
                             {JSON.stringify(probe.expected_attributes)}
                           </div>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase">Expected Exception:</span>
-                          <div className="text-slate-300">
+                          <span className="opacity-75 text-[10px] uppercase block">Expected Exception:</span>
+                          <div>
                             {probe.expected_exception || "None (expected valid)"}
                           </div>
                         </div>
@@ -507,41 +507,40 @@ export function VerificationLaboratoryPage({
           {/* TAB 3: Pytest Results */}
           {activeTab === "tests" && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-[#1e2333] bg-[#0c0e15] text-xs text-slate-300">
-                <span className="font-semibold text-slate-200">
+              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--foreground)] shadow-xs">
+                <span className="font-semibold">
                   Target Repository Pytest Suite Results
                 </span>
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
                   Full test breakdown from executed pytest JUnit XML reports in both baseline and candidate virtual environments.
                 </p>
               </div>
 
               {baseline && (
-                <div className="rounded-xl border border-[#1e2333] bg-[#0c0e16] divide-y divide-[#171b28]">
+                <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)] shadow-xs">
                   {Object.entries(baseline.test_outcomes).map(([testName, baseOutcome]) => {
                     const candOutcome = candidate?.test_outcomes[testName]
-                    const isFailed = baseOutcome === "failed" || candOutcome === "failed"
 
                     return (
                       <div
                         key={testName}
-                        className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono"
+                        className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono hover:bg-[var(--muted)]/40 transition-colors"
                       >
-                        <span className="text-slate-300 truncate max-w-xl" title={testName}>
+                        <span className="text-[var(--foreground)] truncate max-w-xl" title={testName}>
                           {testName}
                         </span>
 
                         <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[11px] text-[var(--muted-foreground)]">
                             Base:{" "}
-                            <span className={baseOutcome === "passed" ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={baseOutcome === "passed" ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
                               {baseOutcome}
                             </span>
                           </span>
-                          <span className="text-slate-600">→</span>
-                          <span className="text-[11px] text-slate-500">
+                          <span className="text-[var(--muted-foreground)]">→</span>
+                          <span className="text-[11px] text-[var(--muted-foreground)]">
                             Candidate:{" "}
-                            <span className={candOutcome === "passed" ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                            <span className={candOutcome === "passed" ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
                               {candOutcome}
                             </span>
                           </span>
@@ -560,14 +559,14 @@ export function VerificationLaboratoryPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Baseline pip list */}
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold text-slate-300 font-mono">
+                  <div className="text-xs font-semibold text-[var(--foreground)] font-mono">
                     Baseline Virtualenv Packages ({Object.keys(baseline?.installed_packages || {}).length})
                   </div>
-                  <div className="rounded-xl border border-[#1e2333] bg-[#090b10] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono shadow-xs">
                     {Object.entries(baseline?.installed_packages || {}).map(([pkg, ver]) => (
-                      <div key={pkg} className="flex items-center justify-between text-slate-300 py-0.5">
-                        <span className="text-slate-400">{pkg}</span>
-                        <span className="text-slate-200">{ver}</span>
+                      <div key={pkg} className="flex items-center justify-between text-[var(--foreground)] py-0.5">
+                        <span className="text-[var(--muted-foreground)]">{pkg}</span>
+                        <span className="font-medium">{ver}</span>
                       </div>
                     ))}
                   </div>
@@ -575,10 +574,10 @@ export function VerificationLaboratoryPage({
 
                 {/* Candidate pip list */}
                 <div className="space-y-2">
-                  <div className="text-xs font-semibold text-indigo-300 font-mono">
+                  <div className="text-xs font-semibold text-[#2F4156] dark:text-[#A5C2FF] font-mono">
                     Candidate Virtualenv Packages ({Object.keys(candidate?.installed_packages || {}).length})
                   </div>
-                  <div className="rounded-xl border border-[#1e2333] bg-[#090b10] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono">
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono shadow-xs">
                     {Object.entries(candidate?.installed_packages || {}).map(([pkg, ver]) => {
                       const baseVer = baseline?.installed_packages[pkg]
                       const isChanged = baseVer && baseVer !== ver
@@ -589,10 +588,10 @@ export function VerificationLaboratoryPage({
                           key={pkg}
                           className={`flex items-center justify-between py-0.5 ${
                             isChanged
-                              ? "text-indigo-300 font-bold bg-indigo-950/30 px-1 rounded"
+                              ? "text-indigo-600 dark:text-[#A5C2FF] font-bold bg-[#C8D9E6]/30 dark:bg-[#0A2472]/60 px-1 rounded"
                               : isNew
-                              ? "text-emerald-300 font-medium bg-emerald-950/30 px-1 rounded"
-                              : "text-slate-300"
+                              ? "text-emerald-600 dark:text-emerald-300 font-medium bg-emerald-500/10 px-1 rounded"
+                              : "text-[var(--foreground)]"
                           }`}
                         >
                           <span>{pkg}</span>
@@ -610,15 +609,15 @@ export function VerificationLaboratoryPage({
 
           {/* Deep Command Execution Evidence Inspector */}
           {selectedCheck && (
-            <div className="space-y-3 pt-4 border-t border-[#1c202e]">
-              <div className="flex items-center justify-between">
+            <div className="space-y-3 pt-4 border-t border-[var(--border)]">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2">
-                  <Terminal size={15} className="text-indigo-400" />
-                  <span className="text-xs font-bold text-slate-200">
-                    Execution Evidence for Check: <code className="text-indigo-300">{selectedCheck}</code>
+                  <Terminal size={15} className="text-[#567C8D] dark:text-[#7DD3FC]" />
+                  <span className="text-xs font-bold text-[var(--foreground)]">
+                    Execution Evidence for Check: <code className="text-[#2F4156] dark:text-[#A5C2FF] font-semibold">{selectedCheck}</code>
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 flex-wrap">
                   {baseline?.commands.map((cmd) => (
                     <button
                       key={cmd.check}
@@ -626,8 +625,8 @@ export function VerificationLaboratoryPage({
                       onClick={() => setSelectedCheck(cmd.check)}
                       className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
                         selectedCheck === cmd.check
-                          ? "bg-indigo-900/60 text-indigo-200 border border-indigo-700/60"
-                          : "bg-[#121522] text-slate-400 hover:text-slate-200"
+                          ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold shadow-xs"
+                          : "bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]"
                       }`}
                     >
                       {cmd.check}
@@ -639,7 +638,7 @@ export function VerificationLaboratoryPage({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Baseline Command */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono text-slate-400">
+                  <div className="flex items-center justify-between text-xs font-mono text-[var(--muted-foreground)]">
                     <span>Baseline Run:</span>
                     <span>
                       {selectedBaselineCmd ? `${selectedBaselineCmd.status} (${selectedBaselineCmd.duration_ms.toFixed(0)}ms)` : "N/A"}
@@ -660,7 +659,7 @@ export function VerificationLaboratoryPage({
                       />
                     </div>
                   ) : (
-                    <div className="p-4 rounded-lg border border-[#1e2333] bg-[#090b10] text-xs text-slate-500 font-mono">
+                    <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--muted-foreground)] font-mono">
                       No baseline command log for {selectedCheck}.
                     </div>
                   )}
@@ -668,7 +667,7 @@ export function VerificationLaboratoryPage({
 
                 {/* Candidate Command */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-mono text-indigo-300">
+                  <div className="flex items-center justify-between text-xs font-mono text-[#2F4156] dark:text-[#A5C2FF]">
                     <span>Candidate Run:</span>
                     <span>
                       {selectedCandidateCmd ? `${selectedCandidateCmd.status} (${selectedCandidateCmd.duration_ms.toFixed(0)}ms)` : "N/A"}
@@ -689,7 +688,7 @@ export function VerificationLaboratoryPage({
                       />
                     </div>
                   ) : (
-                    <div className="p-4 rounded-lg border border-[#1e2333] bg-[#090b10] text-xs text-slate-500 font-mono">
+                    <div className="p-4 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--muted-foreground)] font-mono">
                       No candidate command log for {selectedCheck}.
                     </div>
                   )}
