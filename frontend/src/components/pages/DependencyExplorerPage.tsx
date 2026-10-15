@@ -1,8 +1,21 @@
-import { useState, useMemo } from "react"
+import React, { useState, useMemo, Suspense } from "react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table"
 import {
   Search,
   Filter,
   ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Box,
   FileCode,
   FileText,
   AlertTriangle,
@@ -10,15 +23,49 @@ import {
   ExternalLink,
   Sparkles,
   FlaskConical,
-  X,
-  FileCheck,
+  GitFork,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  CheckCircle2,
+  HelpCircle,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CodeBlock } from "@/components/ui/code-block"
-import type { ExitCapsule, Dependency, DetectedRisk, UsageLocation, EvidenceItem } from "@/types/gemforge"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Sheet,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetContent,
+  SheetFooter,
+} from "@/components/ui/sheet"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@/components/ui/table"
+import type {
+  ExitCapsule,
+  Dependency,
+  DetectedRisk,
+  UsageLocation,
+  EvidenceItem,
+} from "@/types/gemforge"
 import type { ActivePage } from "@/components/Navbar"
+
+// Lazy-load React Flow dependency graph
+const DependencyGraph = React.lazy(() =>
+  import("@/components/dependency-graph/DependencyGraph").then((m) => ({
+    default: m.DependencyGraph,
+  })),
+)
 
 interface DependencyExplorerPageProps {
   capsule: ExitCapsule | null
@@ -26,29 +73,40 @@ interface DependencyExplorerPageProps {
   onSelectForVerification?: (pkg: string) => void
 }
 
-type FilterRiskType = "all" | "conflict" | "uncertainty" | "direct_ref" | "no_risk"
-type SortOrder = "name_asc" | "name_desc" | "risk_high" | "usage_count"
+type FilterRiskType = "all" | "conflict" | "uncertainty" | "direct_ref" | "clean"
+
+export interface DependencyRowData {
+  pkg: string
+  declarations: Dependency[]
+  constraints: string[]
+  manifestLocations: string[]
+  risks: DetectedRisk[]
+  usages: UsageLocation[]
+  evidence: EvidenceItem[]
+  hasRecommendation: boolean
+  highestRiskLevel: "conflict" | "uncertainty" | "direct_ref" | "clean"
+  riskScore: number // For sorting (3 = conflict, 2 = direct_ref, 1 = uncertainty, 0 = clean)
+  usageCount: number
+}
 
 export function DependencyExplorerPage({
   capsule,
   onNavigate,
   onSelectForVerification,
 }: DependencyExplorerPageProps) {
-  const [searchTerm, setSearchTerm] = useState("")
+  const [activeTab, setActiveTab] = useState<"table" | "graph">("table")
+  const [globalFilter, setGlobalFilter] = useState("")
   const [riskFilter, setRiskFilter] = useState<FilterRiskType>("all")
-  const [sortOrder, setSortOrder] = useState<SortOrder>("risk_high")
-  const [selectedPackage, setSelectedPackage] = useState<string | null>(null)
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "riskScore", desc: true },
+  ])
+  const [selectedPackage, setSelectedPackage] = useState<DependencyRowData | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
-  if (!capsule) {
-    return (
-      <div className="py-16 text-center text-[var(--muted-foreground)] text-xs">
-        No active capsule loaded. Scan a repository to explore dependencies.
-      </div>
-    )
-  }
+  // Derive rows from actual capsule evidence
+  const tableData = useMemo<DependencyRowData[]>(() => {
+    if (!capsule) return []
 
-  // Group dependencies by package name (since same package can appear in multiple manifests)
-  const groupedDependencies = useMemo(() => {
     const map = new Map<
       string,
       {
@@ -70,13 +128,15 @@ export function DependencyExplorerPage({
           risks: [],
           usages: [],
           evidence: [],
-          hasRecommendation: capsule.recommendations.some((r) => r.package.toLowerCase() === key),
+          hasRecommendation: capsule.recommendations.some(
+            (r) => r.package.toLowerCase() === key,
+          ),
         })
       }
       map.get(key)!.declarations.push(dep)
     }
 
-    // Associate risks
+    // Attach risks
     for (const risk of capsule.risks) {
       const key = risk.package.toLowerCase()
       if (map.has(key)) {
@@ -84,7 +144,7 @@ export function DependencyExplorerPage({
       }
     }
 
-    // Associate usages
+    // Attach usages
     for (const usage of capsule.usages) {
       const key = usage.package.toLowerCase()
       if (map.has(key)) {
@@ -92,7 +152,7 @@ export function DependencyExplorerPage({
       }
     }
 
-    // Associate evidence items
+    // Attach evidence items
     for (const ev of capsule.evidence) {
       const key = ev.package.toLowerCase()
       if (map.has(key)) {
@@ -100,404 +160,666 @@ export function DependencyExplorerPage({
       }
     }
 
-    return Array.from(map.values())
+    return Array.from(map.values()).map((item) => {
+      let highestRiskLevel: DependencyRowData["highestRiskLevel"] = "clean"
+      let riskScore = 0
+
+      if (item.risks.some((r) => r.kind === "constraint_conflict")) {
+        highestRiskLevel = "conflict"
+        riskScore = 3
+      } else if (item.risks.some((r) => r.kind === "direct_reference")) {
+        highestRiskLevel = "direct_ref"
+        riskScore = 2
+      } else if (item.risks.some((r) => r.kind === "constraint_uncertainty")) {
+        highestRiskLevel = "uncertainty"
+        riskScore = 1
+      }
+
+      const constraints = Array.from(
+        new Set(item.declarations.map((d) => d.constraint).filter(Boolean)),
+      )
+      const manifestLocations = Array.from(
+        new Set(
+          item.declarations.map(
+            (d) => `${d.source.file}${d.source.line ? `:${d.source.line}` : ""}`,
+          ),
+        ),
+      )
+
+      return {
+        pkg: item.pkg,
+        declarations: item.declarations,
+        constraints,
+        manifestLocations,
+        risks: item.risks,
+        usages: item.usages,
+        evidence: item.evidence,
+        hasRecommendation: item.hasRecommendation,
+        highestRiskLevel,
+        riskScore,
+        usageCount: item.usages.length,
+      }
+    })
   }, [capsule])
 
-  // Filter and sort
-  const filteredDependencies = useMemo(() => {
-    return groupedDependencies
-      .filter((item) => {
-        // Search filter
-        const query = searchTerm.toLowerCase().trim()
-        if (query) {
-          const matchesPkg = item.pkg.toLowerCase().includes(query)
-          const matchesManifest = item.declarations.some(
-            (d) => d.source.file.toLowerCase().includes(query) || d.constraint.includes(query),
-          )
-          const matchesUsage = item.usages.some(
-            (u) => u.module.toLowerCase().includes(query) || u.symbol.toLowerCase().includes(query),
-          )
-          if (!matchesPkg && !matchesManifest && !matchesUsage) return false
-        }
+  // Filter rows by risk category dropdown
+  const filteredData = useMemo(() => {
+    if (riskFilter === "all") return tableData
+    return tableData.filter((row) => row.highestRiskLevel === riskFilter)
+  }, [tableData, riskFilter])
 
-        // Risk category filter
-        if (riskFilter === "conflict") {
-          return item.risks.some((r) => r.kind === "constraint_conflict")
-        }
-        if (riskFilter === "uncertainty") {
-          return item.risks.some((r) => r.kind === "constraint_uncertainty")
-        }
-        if (riskFilter === "direct_ref") {
-          return item.risks.some((r) => r.kind === "direct_reference")
-        }
-        if (riskFilter === "no_risk") {
-          return item.risks.length === 0
-        }
-
-        return true
-      })
-      .sort((a, b) => {
-        if (sortOrder === "name_asc") return a.pkg.localeCompare(b.pkg)
-        if (sortOrder === "name_desc") return b.pkg.localeCompare(a.pkg)
-        if (sortOrder === "usage_count") return b.usages.length - a.usages.length
-        if (sortOrder === "risk_high") {
-          const aConflict = a.risks.some((r) => r.kind === "constraint_conflict") ? 3 : a.risks.length > 0 ? 2 : 0
-          const bConflict = b.risks.some((r) => r.kind === "constraint_conflict") ? 3 : b.risks.length > 0 ? 2 : 0
-          if (bConflict !== aConflict) return bConflict - aConflict
-          return a.pkg.localeCompare(b.pkg)
-        }
-        return 0
-      })
-  }, [groupedDependencies, searchTerm, riskFilter, sortOrder])
-
-  // Detail item for drawer
-  const activeDetail = useMemo(() => {
-    if (!selectedPackage) return null
-    return groupedDependencies.find((g) => g.pkg.toLowerCase() === selectedPackage.toLowerCase()) || null
-  }, [selectedPackage, groupedDependencies])
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* Controls Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] shadow-xs transition-colors">
-        {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search size={14} className="absolute left-3 top-2.5 text-[var(--muted-foreground)]" />
-          <Input
-            placeholder="Search dependencies, constraints, files, or symbols…"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 text-xs h-9 font-mono"
-          />
-        </div>
-
-        {/* Filters and Sort */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Risk Filter Buttons */}
-          <div className="flex items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 p-1">
-            <Filter size={12} className="text-[var(--muted-foreground)] mx-1.5" />
-            {(
-              [
-                { id: "all", label: "All" },
-                { id: "conflict", label: "Conflicts" },
-                { id: "uncertainty", label: "Uncertain" },
-                { id: "direct_ref", label: "Direct Refs" },
-                { id: "no_risk", label: "Nominal" },
-              ] as const
-            ).map((rf) => (
-              <button
-                key={rf.id}
-                type="button"
-                onClick={() => setRiskFilter(rf.id)}
-                className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer ${
-                  riskFilter === rf.id
-                    ? "bg-[var(--card)] text-[var(--foreground)] font-semibold shadow-xs border border-[var(--border)]"
-                    : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                }`}
-              >
-                {rf.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Sort Selector */}
-          <div className="flex items-center gap-1.5">
-            <ArrowUpDown size={13} className="text-[var(--muted-foreground)]" />
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              className="rounded-lg border border-[var(--border)] bg-[var(--card)] px-2.5 py-1.5 text-xs text-[var(--foreground)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)] cursor-pointer"
-            >
-              <option value="risk_high">Sort: Highest Risk</option>
-              <option value="name_asc">Sort: Name (A-Z)</option>
-              <option value="name_desc">Sort: Name (Z-A)</option>
-              <option value="usage_count">Sort: Most Usages</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Area: Split layout when drawer is open */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Dependency Cards List */}
-        <div className={selectedPackage ? "lg:col-span-7 space-y-3" : "lg:col-span-12 space-y-3"}>
-          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)] px-1">
-            <span>
-              Showing {filteredDependencies.length} of {groupedDependencies.length} unique packages
-            </span>
-            {riskFilter !== "all" && (
-              <button
-                onClick={() => setRiskFilter("all")}
-                className="text-[#567C8D] dark:text-[#7DD3FC] hover:underline cursor-pointer font-medium"
-              >
-                Clear risk filter
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-2.5">
-            {filteredDependencies.length === 0 ? (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 text-center text-xs text-[var(--muted-foreground)]">
-                No dependencies match the search criteria.
-              </div>
+  // TanStack Table Column Definitions
+  const columns = useMemo<ColumnDef<DependencyRowData>[]>(
+    () => [
+      {
+        accessorKey: "pkg",
+        header: ({ column }) => (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Package
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
             ) : (
-              filteredDependencies.map((item) => {
-                const isSelected = selectedPackage?.toLowerCase() === item.pkg.toLowerCase()
-                const hasConflict = item.risks.some((r) => r.kind === "constraint_conflict")
-                const hasUncertainty = item.risks.some((r) => r.kind === "constraint_uncertainty")
-
-                return (
-                  <div
-                    key={item.pkg}
-                    onClick={() => setSelectedPackage(isSelected ? null : item.pkg)}
-                    className={`rounded-xl border p-4 transition-all cursor-pointer shadow-xs ${
-                      isSelected
-                        ? "border-[#567C8D] bg-[#EBF3F8] dark:border-[#123499] dark:bg-[#071d60] ring-1 ring-[#567C8D]/50 dark:ring-[#123499]/60"
-                        : "border-[var(--border)] bg-[var(--card)] hover:border-[var(--muted-foreground)] hover:shadow-sm"
-                    }`}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                      {/* Package Name & Constraints */}
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-bold text-[var(--foreground)]">
-                            {item.pkg}
-                          </span>
-
-                          {hasConflict && (
-                            <Badge variant="conflict" className="text-[10px]">
-                              Conflict
-                            </Badge>
-                          )}
-                          {!hasConflict && hasUncertainty && (
-                            <Badge variant="warning" className="text-[10px]">
-                              Uncertain
-                            </Badge>
-                          )}
-
-                          {item.hasRecommendation && (
-                            <Badge variant="indigo" className="text-[10px] gap-1">
-                              <Sparkles size={9} />
-                              Gemma Recommendation
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Declarations chips */}
-                        <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
-                          {item.declarations.map((dec, i) => (
-                            <span
-                              key={i}
-                              className="rounded bg-[var(--muted)]/60 border border-[var(--border)] px-2 py-0.5 text-[11px] text-[var(--foreground)]"
-                            >
-                              {dec.raw}
-                              <span className="text-[var(--muted-foreground)] ml-1">
-                                ({dec.source.file}:{dec.source.line || 1})
-                              </span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Right metadata badges */}
-                      <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center">
-                        <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] font-mono">
-                          <Code2 size={13} className="text-[var(--muted-foreground)]" />
-                          <span>{item.usages.length} usages</span>
-                        </div>
-
-                        {item.evidence.length > 0 && (
-                          <div className="flex items-center gap-1.5 text-xs text-[var(--muted-foreground)] font-mono">
-                            <FileCheck size={13} className="text-[var(--muted-foreground)]" />
-                            <span>{item.evidence.length} evidence</span>
-                          </div>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs px-2 text-[#567C8D] dark:text-[#7DD3FC]"
-                        >
-                          {isSelected ? "Close" : "Inspect →"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Quick risk summary if any */}
-                    {item.risks.length > 0 && (
-                      <div className="mt-3 pt-2.5 border-t border-[var(--border)] text-xs">
-                        {item.risks.map((r, ri) => (
-                          <div key={ri} className="flex items-start gap-2 text-[11px] text-amber-700 dark:text-amber-300 font-mono">
-                            <AlertTriangle size={12} className="shrink-0 mt-0.5 text-amber-500" />
-                            <span>{r.evidence}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })
+              <ArrowUpDown className="h-3 w-3 opacity-40" />
             )}
-          </div>
-        </div>
-
-        {/* Detailed Inspector Drawer */}
-        {activeDetail && (
-          <div className="lg:col-span-5 rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-5 sticky top-20 shadow-lg transition-colors">
-            <div className="flex items-start justify-between pb-3 border-b border-[var(--border)]">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-mono text-base font-bold text-[var(--foreground)]">
-                    {activeDetail.pkg}
-                  </h3>
-                  <Badge variant="outline" className="text-[10px] font-mono">
-                    {activeDetail.declarations[0]?.group || "runtime"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-[var(--muted-foreground)]">
-                  Detailed manifest, AST usage, and empirical evidence
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setSelectedPackage(null)}
-                className="p-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors cursor-pointer"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Quick Actions */}
+          </button>
+        ),
+        cell: ({ row }) => {
+          const item = row.original
+          return (
             <div className="flex items-center gap-2">
-              {activeDetail.hasRecommendation && (
-                <Button
-                  size="sm"
-                  onClick={() => onNavigate("migration")}
-                  className="flex-1 text-xs h-8 gap-1.5"
+              <div className="rounded-md p-1.5 bg-[var(--muted)] border border-[var(--border)] text-[var(--foreground)]">
+                <Box className="h-4 w-4 text-[var(--accent-teal)]" />
+              </div>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedPackage(item)
+                    setSheetOpen(true)
+                  }}
+                  className="font-semibold text-xs text-[var(--foreground)] hover:text-[var(--primary)] hover:underline text-left cursor-pointer flex items-center gap-1.5"
                 >
-                  <Sparkles size={12} />
-                  <span>Migration Intelligence</span>
+                  {item.pkg}
+                  {item.hasRecommendation && (
+                    <Badge variant="indigo" className="text-[10px] py-0 px-1.5 h-4">
+                      <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                      AI
+                    </Badge>
+                  )}
+                </button>
+                <div className="text-[11px] text-[var(--muted-foreground)] font-mono">
+                  {item.declarations[0]?.group || "runtime"}
+                </div>
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "constraints",
+        header: "Declared Constraint",
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div>
+              <div className="flex flex-wrap gap-1">
+                {item.constraints.length > 0 ? (
+                  item.constraints.map((c, i) => (
+                    <span
+                      key={i}
+                      className="inline-block rounded px-1.5 py-0.5 font-mono text-[11px] bg-[var(--code-bg)] border border-[var(--code-border)] text-[var(--code-text)] font-semibold"
+                    >
+                      {c}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-[var(--muted-foreground)] italic text-[11px]">unpinned</span>
+                )}
+              </div>
+              <div className="text-[10px] text-[var(--muted-foreground)] font-mono mt-0.5 truncate max-w-[200px]" title={item.manifestLocations.join(", ")}>
+                {item.manifestLocations[0] || "manifest"}
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "riskScore",
+        id: "riskScore",
+        header: ({ column }) => (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Risk Category
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3 opacity-40" />
+            )}
+          </button>
+        ),
+        cell: ({ row }) => {
+          const item = row.original
+          if (item.highestRiskLevel === "conflict") {
+            return (
+              <Badge variant="conflict" className="gap-1 font-semibold">
+                <AlertTriangle className="h-3 w-3" />
+                Proven Conflict ({item.risks.length})
+              </Badge>
+            )
+          }
+          if (item.highestRiskLevel === "direct_ref") {
+            return (
+              <Badge variant="warning" className="gap-1 font-semibold">
+                <AlertTriangle className="h-3 w-3" />
+                Direct Ref ({item.risks.length})
+              </Badge>
+            )
+          }
+          if (item.highestRiskLevel === "uncertainty") {
+            return (
+              <Badge variant="warning" className="gap-1">
+                <HelpCircle className="h-3 w-3" />
+                Uncertain ({item.risks.length})
+              </Badge>
+            )
+          }
+          return (
+            <Badge variant="success" className="gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Clean
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: "usageCount",
+        header: ({ column }) => (
+          <button
+            type="button"
+            className="flex items-center gap-1.5 hover:text-[var(--foreground)] transition-colors cursor-pointer"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            AST Usages
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="h-3 w-3" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="h-3 w-3" />
+            ) : (
+              <ArrowUpDown className="h-3 w-3 opacity-40" />
+            )}
+          </button>
+        ),
+        cell: ({ row }) => {
+          const item = row.original
+          const uniqueFiles = new Set(item.usages.map((u) => u.source.file)).size
+          return (
+            <div>
+              <div className="font-mono text-xs font-semibold text-[var(--foreground)]">
+                {item.usageCount} {item.usageCount === 1 ? "import" : "imports"}
+              </div>
+              <div className="text-[10px] text-[var(--muted-foreground)]">
+                across {uniqueFiles} {uniqueFiles === 1 ? "file" : "files"}
+              </div>
+            </div>
+          )
+        },
+      },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => {
+          const item = row.original
+          return (
+            <div className="flex items-center justify-end gap-1.5">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs px-2"
+                onClick={() => {
+                  setSelectedPackage(item)
+                  setSheetOpen(true)
+                }}
+              >
+                <Eye className="h-3 w-3 mr-1" />
+                Inspect
+              </Button>
+              {onSelectForVerification && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-7 text-xs px-2"
+                  onClick={() => {
+                    onSelectForVerification(item.pkg)
+                    onNavigate("verification")
+                  }}
+                  title="Verify in Laboratory"
+                >
+                  <FlaskConical className="h-3 w-3" />
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  if (onSelectForVerification) onSelectForVerification(activeDetail.pkg)
-                  onNavigate("verification")
-                }}
-                className="flex-1 text-xs h-8 gap-1.5"
-              >
-                <FlaskConical size={12} />
-                <span>Verify in Lab</span>
-              </Button>
+            </div>
+          )
+        },
+      },
+    ],
+    [onNavigate, onSelectForVerification],
+  )
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      sorting,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
+  })
+
+  if (!capsule) {
+    return (
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-16 text-center text-xs text-[var(--muted-foreground)]">
+        No active capsule loaded. Scan a repository to explore dependencies.
+      </div>
+    )
+  }
+
+  const recommendationForSelected = selectedPackage
+    ? capsule.recommendations.find(
+        (r) => r.package.toLowerCase() === selectedPackage.pkg.toLowerCase(),
+      )
+    : null
+
+  return (
+    <div className="space-y-6">
+      {/* Top Header & View Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-[var(--foreground)]">
+            Dependency Explorer
+          </h1>
+          <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+            Inspect declared packages, AST usage locations, version constraints, and proven risks.
+          </p>
+        </div>
+
+        {/* View Switcher: Table vs Interactive Graph */}
+        <div className="flex items-center gap-1 bg-[var(--muted)] p-1 rounded-lg border border-[var(--border)] select-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab("table")}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+              activeTab === "table"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-xs font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <FileText className="h-3.5 w-3.5" />
+            Table View
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("graph")}
+            className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+              activeTab === "graph"
+                ? "bg-[var(--card)] text-[var(--foreground)] shadow-xs font-semibold"
+                : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            <GitFork className="h-3.5 w-3.5" />
+            Relationship Graph
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "graph" ? (
+        <Suspense
+          fallback={
+            <div className="h-[600px] w-full rounded-xl border border-[var(--border)] bg-[var(--card)] p-8 flex flex-col items-center justify-center space-y-4">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-64 w-full max-w-xl" />
+              <p className="text-xs text-[var(--muted-foreground)] animate-pulse">
+                Loading interactive AST dependency relationship graph...
+              </p>
+            </div>
+          }
+        >
+          <DependencyGraph capsule={capsule} />
+        </Suspense>
+      ) : (
+        <div className="space-y-4">
+          {/* Search & Filter Toolbar */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[var(--muted-foreground)]" />
+              <Input
+                placeholder="Search dependencies..."
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(e.target.value)}
+                className="pl-9 h-9 text-xs"
+              />
             </div>
 
-            {/* Manifest Declarations */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                <FileText size={13} className="text-[var(--muted-foreground)]" />
-                Declared Manifest Sources ({activeDetail.declarations.length})
+            {/* Risk Category Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--muted-foreground)] font-medium flex items-center gap-1">
+                <Filter className="h-3.5 w-3.5" />
+                Filter:
               </span>
-              <div className="space-y-1.5">
-                {activeDetail.declarations.map((dec, i) => (
-                  <div
-                    key={i}
-                    className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 text-xs font-mono space-y-1"
-                  >
-                    <div className="flex items-center justify-between text-[var(--foreground)]">
-                      <span className="font-bold text-[#2F4156] dark:text-[#A5C2FF]">{dec.raw}</span>
-                      <span className="text-[11px] text-[var(--muted-foreground)]">
-                        {dec.source.file}:{dec.source.line || 1}
-                      </span>
-                    </div>
-                    {dec.constraint && (
-                      <div className="text-[11px] text-[var(--muted-foreground)]">
-                        Parsed Constraint: <code className="text-[var(--foreground)] font-semibold">{dec.constraint}</code>
-                      </div>
-                    )}
-                  </div>
+              <select
+                value={riskFilter}
+                onChange={(e) => setRiskFilter(e.target.value as FilterRiskType)}
+                aria-label="Filter dependencies by risk"
+                className="h-9 rounded-md border border-[var(--border)] bg-[var(--card)] px-3 text-xs text-[var(--foreground)] shadow-xs focus-visible:outline-none focus-visible:ring-1 cursor-pointer"
+              >
+                <option value="all">All Packages ({tableData.length})</option>
+                <option value="conflict">Proven Conflicts</option>
+                <option value="uncertainty">Uncertainties</option>
+                <option value="direct_ref">Direct References</option>
+                <option value="clean">Clean / No Risk</option>
+              </select>
+            </div>
+          </div>
+
+          {/* TanStack Table Container */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-xs">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
                 ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                      className="hover:bg-[var(--muted)]/50 transition-colors"
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-32 text-center text-xs text-[var(--muted-foreground)]"
+                    >
+                      No dependencies match the current search and filter criteria.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Pagination Controls */}
+            <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)] bg-[var(--muted)]/30 text-xs text-[var(--muted-foreground)]">
+              <div className="flex items-center gap-1.5">
+                <span>Showing</span>
+                <span className="font-semibold text-[var(--foreground)]">
+                  {table.getState().pagination.pageIndex *
+                    table.getState().pagination.pageSize +
+                    (table.getFilteredRowModel().rows.length > 0 ? 1 : 0)}
+                  -
+                  {Math.min(
+                    (table.getState().pagination.pageIndex + 1) *
+                      table.getState().pagination.pageSize,
+                    table.getFilteredRowModel().rows.length,
+                  )}
+                </span>
+                <span>of</span>
+                <span className="font-semibold text-[var(--foreground)]">
+                  {table.getFilteredRowModel().rows.length}
+                </span>
+                <span>packages</span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 mr-2">
+                  <span>Page</span>
+                  <span className="font-semibold text-[var(--foreground)]">
+                    {table.getState().pagination.pageIndex + 1} of{" "}
+                    {table.getPageCount() || 1}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* AST Usages */}
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                <Code2 size={13} className="text-[var(--muted-foreground)]" />
-                Python AST Usages ({activeDetail.usages.length})
-              </span>
-              {activeDetail.usages.length === 0 ? (
-                <div className="p-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/50 text-xs text-[var(--muted-foreground)]">
-                  No imports or symbol references detected in scanned Python files.
-                </div>
-              ) : (
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                  {activeDetail.usages.map((u, i) => (
+      {/* Dependency Detail Sheet / Slide-over Drawer */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        {selectedPackage && (
+          <>
+            <SheetHeader onClose={() => setSheetOpen(false)}>
+              <div className="flex items-center gap-2 mb-1">
+                <Box className="h-5 w-5 text-[var(--accent-teal)]" />
+                <SheetTitle className="text-lg">{selectedPackage.pkg}</SheetTitle>
+                {selectedPackage.highestRiskLevel === "conflict" ? (
+                  <Badge variant="conflict">Proven Conflict</Badge>
+                ) : selectedPackage.highestRiskLevel === "uncertainty" ? (
+                  <Badge variant="warning">Uncertainty</Badge>
+                ) : (
+                  <Badge variant="success">Clean</Badge>
+                )}
+              </div>
+              <SheetDescription>
+                Declared in{" "}
+                <span className="font-mono text-[var(--foreground)] font-semibold">
+                  {selectedPackage.manifestLocations.join(", ")}
+                </span>
+              </SheetDescription>
+            </SheetHeader>
+
+            <SheetContent className="space-y-5">
+              {/* Declared Specifications */}
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider mb-2">
+                  Declared Constraints
+                </h4>
+                <div className="space-y-1.5">
+                  {selectedPackage.declarations.map((d, i) => (
                     <div
                       key={i}
-                      className="p-2 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 text-xs font-mono"
-                    >
-                      <div className="flex items-center justify-between text-[var(--foreground)]">
-                        <span className="font-semibold truncate max-w-[200px]" title={u.symbol}>
-                          {u.symbol}
-                        </span>
-                        <span className="text-[10px] text-[var(--muted-foreground)]">
-                          {u.kind} · {u.mapping}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
-                        {u.source.file}:{u.source.line || 1}
-                        {u.alias && u.alias !== u.symbol && (
-                          <span className="text-[var(--foreground)] font-medium ml-1.5">as {u.alias}</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Evidence Items */}
-            {activeDetail.evidence.length > 0 && (
-              <div className="space-y-2">
-                <span className="text-xs font-semibold text-[var(--foreground)] flex items-center gap-1.5">
-                  <FileCode size={13} className="text-[var(--muted-foreground)]" />
-                  Evidence Items ({activeDetail.evidence.length})
-                </span>
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {activeDetail.evidence.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--card)] space-y-1.5 text-xs"
+                      className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--muted)] text-xs font-mono space-y-1"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-[10px] text-[#567C8D] dark:text-[#7DD3FC] font-semibold">
-                          {ev.id}
-                        </span>
-                        <span className="text-[10px] text-[var(--muted-foreground)] uppercase">{ev.kind}</span>
+                        <span className="font-bold text-[var(--foreground)]">{d.raw}</span>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {d.group}
+                        </Badge>
                       </div>
-                      <p className="text-[11px] text-[var(--foreground)] font-sans leading-relaxed">
-                        {ev.description}
-                      </p>
-                      {ev.excerpt && (
-                        <CodeBlock
-                          code={ev.excerpt}
-                          sha256={ev.excerpt_sha256}
-                          title={ev.source ? `${ev.source.file}:${ev.source.line || 1}` : undefined}
-                          maxHeight="max-h-28"
-                          collapsible
-                        />
-                      )}
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        File: {d.source.file}:{d.source.line ?? "?"}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
+
+              {/* Detected Risks */}
+              {selectedPackage.risks.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[var(--status-error-text)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                    Detected Risks ({selectedPackage.risks.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedPackage.risks.map((risk, i) => (
+                      <div
+                        key={i}
+                        className="p-3 rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-xs text-[var(--status-error-text)] font-mono space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold">{risk.kind}</span>
+                          <span className="text-[10px] uppercase font-semibold">
+                            {risk.certainty}
+                          </span>
+                        </div>
+                        <div className="text-[11px] opacity-90">{risk.evidence}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AST Usage Inventory */}
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <FileCode className="h-3.5 w-3.5 text-[var(--accent-teal)]" />
+                  AST Import Locations ({selectedPackage.usages.length})
+                </h4>
+                {selectedPackage.usages.length > 0 ? (
+                  <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                    {selectedPackage.usages.map((u, i) => (
+                      <div
+                        key={i}
+                        className="p-2 rounded-md border border-[var(--border)] bg-[var(--card)] text-xs font-mono space-y-0.5"
+                      >
+                        <div className="text-[var(--foreground)] font-semibold truncate" title={u.source.file}>
+                          {u.source.file}:{u.source.line ?? "?"}
+                        </div>
+                        <div className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-2">
+                          <span>
+                            symbol: <strong className="text-[var(--foreground)]">{u.symbol}</strong>
+                          </span>
+                          <span>&bull;</span>
+                          <span>module: {u.module}</span>
+                          <span>&bull;</span>
+                          <span>{u.mapping}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--muted-foreground)] italic">
+                    No direct AST import statements detected for this package in scanned files.
+                  </p>
+                )}
+              </div>
+
+              {/* Gemma 4 Migration Status */}
+              <div>
+                <h4 className="text-xs font-semibold text-[var(--foreground)] uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-[var(--accent-teal)]" />
+                  Gemma 4 Migration Advice
+                </h4>
+                {recommendationForSelected ? (
+                  <div className="p-3 rounded-lg border border-[#C8D9E6] dark:border-[#123499] bg-[#C8D9E6]/20 dark:bg-[#0A2472]/40 text-xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-[var(--foreground)]">
+                        Suggested: {recommendationForSelected.replacement || "See steps"}
+                      </span>
+                      <Badge variant="indigo" className="text-[10px]">
+                        Unverified AI Hypothesis
+                      </Badge>
+                    </div>
+                    {recommendationForSelected.migration_steps.length > 0 && (
+                      <ul className="list-disc pl-4 space-y-1 text-[11px] text-[var(--foreground)]">
+                        {recommendationForSelected.migration_steps.map((s, idx) => (
+                          <li key={idx}>{s}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--muted-foreground)] italic">
+                    No Gemma 4 migration advice generated for this dependency.
+                  </p>
+                )}
+              </div>
+            </SheetContent>
+
+            <SheetFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSheetOpen(false)
+                  onNavigate("migration")
+                }}
+              >
+                Inspect Migration
+              </Button>
+              {onSelectForVerification && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => {
+                    setSheetOpen(false)
+                    onSelectForVerification(selectedPackage.pkg)
+                    onNavigate("verification")
+                  }}
+                >
+                  <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
+                  Test in Lab
+                </Button>
+              )}
+            </SheetFooter>
+          </>
         )}
-      </div>
+      </Sheet>
     </div>
   )
 }

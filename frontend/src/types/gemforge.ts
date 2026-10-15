@@ -219,6 +219,81 @@ export interface ExitCapsule {
   evidence: EvidenceItem[]
   inferences: InferenceRecord[]
   ai_status: AIAnalysisStatus
+  repairs?: RepairRecommendation[]
+}
+
+// Repair contracts per API-CONTRACT.md
+export interface RepairEvidence {
+  id: string
+  kind: "source" | "probe" | "diagnostic" | "prior_recommendation"
+  description: string
+  excerpt: string | null
+  excerpt_sha256: string | null
+  source?: SourceLocation | null
+  end_line?: number | null
+  regression?: boolean
+}
+
+export interface RepairChange {
+  source_evidence_id: string
+  file: string
+  start_line: number
+  end_line: number
+  before: string
+  after: string
+  explanation: string
+}
+
+export interface RepairProposal {
+  package: string
+  evidence_ids: string[]
+  failure_explanation: string
+  changes: RepairChange[]
+  verification_plan: string[]
+  compatibility_concerns: string[]
+  limitations: string[]
+}
+
+export interface RepairRecommendation {
+  package: string
+  created_at: string
+  status: "not_requested" | "generated" | "unavailable"
+  origin: "ai_hypothesis"
+  verification_status: "unverified"
+  parent_verification_sha256: string
+  evidence: RepairEvidence[]
+  proposal: RepairProposal | null
+  inference: InferenceRecord | null
+  reason: string
+}
+
+export interface RepairRequest {
+  analysis_id: string
+  dependency: string
+  ai?: boolean
+  allow_hosted?: boolean
+}
+
+// Verification View contract per GET /analyses/{id}/verification
+export interface ProbeObservation {
+  name: string
+  status: "passed" | "failed"
+  actual: Record<string, unknown> | null
+  actual_exception: string | null
+  error_type: string | null
+  message: string | null
+}
+
+export interface VerificationView {
+  verification: VerificationStatus
+  probes: Array<{
+    name: string
+    specification: ModelProbe | null
+    baseline: ProbeObservation | null
+    candidate: ProbeObservation | null
+    comparison: CheckComparison | null
+  }>
+  limitations: string[]
 }
 
 // API Request/Response contracts
@@ -254,3 +329,4 @@ export interface HealthResponse {
   status: string
   phase: string
 }
+

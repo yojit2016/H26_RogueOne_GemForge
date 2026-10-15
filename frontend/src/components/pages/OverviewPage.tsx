@@ -15,6 +15,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  RiskDistributionChart,
+  PackageUsageChart,
+  VerificationOutcomesChart,
+} from "@/components/charts/ResilienceCharts"
 import type { ExitCapsule } from "@/types/gemforge"
 import type { ActivePage } from "@/components/Navbar"
 
@@ -305,6 +310,23 @@ export function OverviewPage({
           </Button>
         </div>
       )}
+
+      {/* Resilience Analytics Visualizations via Recharts */}
+      <div className="space-y-3">
+        <div className="space-y-0.5">
+          <h3 className="text-sm font-semibold text-[var(--foreground)]">
+            Resilience Analytics
+          </h3>
+          <p className="text-xs text-[var(--muted-foreground)]">
+            Empirical telemetry on dependency risk categories, AST usage density, and execution parity.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <RiskDistributionChart capsule={capsule} />
+          <PackageUsageChart capsule={capsule} />
+          <VerificationOutcomesChart capsule={capsule} />
+        </div>
+      </div>
 
       {/* Two-Column Deep Dive: Risk Breakdown + Repository Health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
