@@ -1,0 +1,229 @@
+# Frontend integration reference
+
+Backend contract for Antigravity's dashboard. This file describes the current
+FastAPI implementation; [API-CONTRACT.md](API-CONTRACT.md) contains the full
+field semantics. The backend is unauthenticated and intended for trusted local
+use only.
+
+## Start the local services
+
+From the GemForge root, start the API:
+
+```powershell
+.venv/Scripts/python.exe -m uvicorn gemforge.api:app --host 127.0.0.1 --port 8000
+```
+
+Run the frontend dev server in a second terminal. Vite proxies `/api` to the
+backend:
+
+```powershell
+cd frontend
+npm.cmd ci
+npm.cmd run dev
+```
+
+The API serves OpenAPI at `http://127.0.0.1:8000/openapi.json` and Swagger UI at
+`http://127.0.0.1:8000/docs`. The Vite proxy is development-only. Keep the API
+bound to loopback; production requires a deliberate same-origin proxy and
+authentication design.
+
+## Routes
+
+| Method and path | Purpose | Success response |
+| --- | --- | --- |
+| `GET /health` | Check backend availability | `{"status":"ok","phase":"3"}` |
+| `POST /scan` | Offline, read-only scan | `ExitCapsule` |
+| `POST /analyze` | Scan, optionally request Gemma 4 | `201 AnalysisResponse` |
+| `POST /verify` | Preview or explicitly consent to paired checks | `201 AnalysisResponse` |
+| `POST /analyses/import` | Import a serialized capsule into memory | `201 AnalysisResponse` |
+| `GET /analyses/{id}` | Retrieve a cached capsule | `ExitCapsule` |
+| `GET /analyses/{id}/verification` | Read typed expected/actual probe results | `VerificationView` |
+| `POST /repairs` | Add a new, unverified repair suggestion capsule | `201 AnalysisResponse` |
+| `GET /analyses/{id}/export?format=json` | Download capsule as JSON (`json` default) | JSON attachment |
+| `GET /analyses/{id}/export?format=markdown` | Download capsule as Markdown | Markdown attachment |
+
+`AnalysisResponse` is `{ "id": string, "capsule": ExitCapsule }`. The process
+keeps only the latest 20 capsules in memory; restart or eviction means `404`.
+Imported capsule files remain the durable artifact.
+
+## Initialize an analysis
+
+Offline scan:
+
+```http
+POST /api/scan
+Content-Type: application/json
+
+{"path":"C:/path/to/repository","import_map":{"dateutil":"python-dateutil"}}
+```
+
+`ScanRequest` has required non-empty `path` and optional `import_map` (defaults
+to `{}`). `POST /api/analyze` accepts the same fields plus `ai` (default
+`false`), `allow_hosted` (default `false`) and `max_ai_packages` (default `10`,
+range 1–50). Hosted requests are synchronous and may take minutes. A `201` only
+means a capsule was created; inspect inference status and verification verdict
+separately.
+
+Example hosted request (set `ai:false` and `allow_hosted:false` for an offline
+analysis):
+
+```json
+{
+  "path": "C:/path/to/repository",
+  "import_map": {"dateutil": "python-dateutil"},
+  "ai": true,
+  "allow_hosted": true,
+  "max_ai_packages": 10
+}
+```
+
+Response shape:
+
+```json
+{
+  "id": "opaque-cache-id",
+  "capsule": {
+    "schema_version": "1.0",
+    "repository": {},
+    "dependencies": [],
+    "risks": [],
+    "constraints": [],
+    "usages": [],
+    "recommendations": [],
+    "verification": {"verdict": "not_run"},
+    "repairs": [],
+    "limitations": []
+  }
+}
+```
+
+This is an abbreviated shape; use the generated OpenAPI schema or the capsule
+models for exact field definitions. Saved older capsules may omit `repairs`.
+
+The dashboard's main capsule fields are:
+
+| Field | Content |
+| --- | --- |
+| `dependencies` | Declared dependency facts and source locations |
+| `risks`, `constraints` | Deterministic findings and constraint assessments |
+| `usages` | Static import/reference locations |
+| `recommendations`, `inferences` | AI hypotheses and provider provenance |
+| `verification` | Baseline, candidate, comparisons and scoped verdict |
+| `repairs` | Unverified repair hypotheses/evidence, when present |
+| `limitations` | Explicit unsupported cases and uncertainty |
+
+Each `AIRecommendation` includes a package and status
+(`not_requested`, `generated` or `unavailable`), and may include model ID,
+replacement constraint, rationale, migration steps, proposed changes,
+compatibility concerns, unrun verification checks, unknowns and limitations.
+Check its status before displaying optional content.
+
+## Import and retrieve existing capsules
+
+To display the saved LinkWatch Phase 3 evidence after an API restart, send the
+capsule JSON itself as the body. Do not wrap it in `{ "capsule": ... }`:
+
+```http
+POST /api/analyses/import
+Content-Type: application/json
+
+<serialized ExitCapsule JSON object>
+```
+
+The endpoint returns `201 AnalysisResponse` with a new in-memory ID. It performs
+no inference or target-code execution and does not attest to the authenticity of
+user-supplied evidence. Serialized capsules over 2 MB return `400`.
+
+Use `GET /api/analyses/{id}` for the capsule. For detailed probe output,
+`GET /api/analyses/{id}/verification` returns:
+
+```typescript
+type VerificationView = {
+  verification: VerificationStatus;
+  probes: Array<{
+    name: string;
+    specification: ModelProbe | null;
+    baseline: ProbeObservation | null;
+    candidate: ProbeObservation | null;
+    comparison: CheckComparison | null;
+  }>;
+  limitations: string[];
+};
+```
+
+Render `verification.verdict` independently from HTTP status, installation
+success, `ai_status` or the number of passing checks. A
+`verified_for_selected_checks` result is scoped to those checks, not a universal
+safety claim. Missing or inconsistent probe details remain null with explicit
+limitations.
+
+The `/verify` request body is:
+
+```json
+{
+  "path": "C:/path/to/repository",
+  "dependency": "pydantic",
+  "target": "pydantic>=2,<3",
+  "analysis_id": "OPTIONAL_PRIOR_ANALYSIS_ID",
+  "confirm_execution": false,
+  "probes": [],
+  "import_module": "linkwatch.config",
+  "timeout": 60,
+  "install_timeout": 180
+}
+```
+
+`path` and `dependency` are required. All other fields are optional with the
+shown defaults; `target` and `analysis_id` may be omitted. The API returns the
+same `AnalysisResponse` envelope as `/analyze`.
+
+## Recommendations and repair requests
+
+Migration hypotheses are in `capsule.recommendations`; they are untrusted advice,
+not observed results. For the evidence-grounded repair workflow, request an
+offline preview by default:
+
+```http
+POST /api/repairs
+Content-Type: application/json
+
+{
+  "analysis_id": "ID_OF_IMPORTED_OR_VERIFIED_REGRESSION",
+  "dependency": "pydantic",
+  "ai": false,
+  "allow_hosted": false
+}
+```
+
+To request hosted repair generation, set both `ai` and `allow_hosted` true and
+ensure local credentials are configured. A successful request creates a **new**
+capsule; it does not mutate the parent. Inspect
+`capsule.repairs[i].status`, `verification_status` and `inference`. HTTP `201`
+can contain `status:"unavailable"` when the model request fails. Display
+`changes[].after` as untrusted text; there is no apply or execute endpoint.
+
+Only `/verify` with explicit `confirm_execution:true` executes reviewed checks
+in temporary environments. It does not apply repair suggestions. Never trigger
+that flow automatically from page load or retry.
+
+## Export and error handling
+
+Fetch a download as a `Blob` and use the response's
+`Content-Disposition` filename when available:
+
+```text
+GET /api/analyses/{id}/export?format=json
+GET /api/analyses/{id}/export?format=markdown
+```
+
+Handle errors explicitly:
+
+- `400`: invalid path/state, unsuitable or stale repair evidence, or oversized
+  imported capsule.
+- `404`: analysis ID missing, expired or evicted.
+- `422`: request schema/field validation failure or unsupported export format.
+- `201` with inference status `unavailable`: request completed but model output
+  is unavailable; surface its sanitized reason rather than treating it as success.
+
+Do not automatically retry synchronous analyze, verify or repair requests.
+Preserve an imported/exported capsule locally if it must survive server restart.

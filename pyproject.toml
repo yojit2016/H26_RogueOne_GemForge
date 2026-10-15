@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gemforge"
+version = "0.1.0"
+description = "Read-only dependency facts and reusable exit capsules for Python repositories"
+requires-python = ">=3.12"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+  "packaging>=24.2,<27",
+  "pydantic>=2.10,<3",
+  "typer>=0.15,<1",
+  "rich>=13.9,<15",
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.34,<1",
+]
+
+[project.optional-dependencies]
+ai = ["google-genai>=1,<3", "python-dotenv>=1,<2"]
+dev = ["pytest>=8.3,<10", "httpx>=0.28,<1", "ruff>=0.11,<1"]
+
+[project.scripts]
+gemforge = "gemforge.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP"]
+
+# Declarative submission metadata only; no repository creation or push automation.
+[tool.gemforge.submission]
+team_name = "Rogue One"
+project_name = "GemForge"
+track = "Gemma 4 — Dependency Resilience"
+repository_name = "H26_RogueOne_GemForge"
+target_repository = "https://github.com/rishrek/LinkWatch"
+required_visibility = "public"
+starter_fork_status = "awaiting_confirmation"
+publication_enabled = false
+event_date = "2026-10-15"
+development_window_start = "10:30"
+development_window_end = "16:30"
+timezone = "Asia/Kolkata"
