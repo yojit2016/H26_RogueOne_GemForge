@@ -132,10 +132,10 @@ Read the command-specific `--help` before requesting execution or hosted inferen
 # In a second terminal:
 cd frontend
 npm.cmd ci
-npm.cmd run dev
+npm.cmd run dev -- --port 5174 --strictPort
 ```
 
-Open http://127.0.0.1:5173. The React/TypeScript dashboard scans an explicit local
+Open http://127.0.0.1:5174. The React/TypeScript dashboard scans an explicit local
 path or public GitHub HTTPS repository through Vite's `/api` proxy. API docs:
 http://127.0.0.1:8000/docs. `POST /scan` accepts
 `{"path":"https://github.com/rishrek/LinkWatch","import_map":{}}` or a local
