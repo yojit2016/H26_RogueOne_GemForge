@@ -3,6 +3,7 @@ import {
   FileCheck2,
   Download,
   Copy,
+  Check,
   CheckCircle2,
   AlertTriangle,
   Code2,
@@ -12,12 +13,22 @@ import {
   ShieldAlert,
   HelpCircle,
   FileText,
-  ChevronDown,
-  ChevronUp,
+  Clock,
+  Cpu,
+  Layers,
+  ArrowRight,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CodeBlock } from "@/components/ui/code-block"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion"
 import type { ExitCapsule } from "@/types/gemforge"
 
 interface ExitCapsulePageProps {
@@ -26,7 +37,8 @@ interface ExitCapsulePageProps {
 }
 
 export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps) {
-  const [activeSection, setActiveSection] = useState<string>("section-1")
+  const [activeTab, setActiveTab] = useState<"structured" | "evidence" | "raw">("structured")
+  const [copiedJson, setCopiedJson] = useState(false)
 
   if (!capsule) {
     return (
@@ -36,22 +48,20 @@ export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps)
     )
   }
 
-  const sections = [
-    { id: "section-1", title: "1. Dependency Details", icon: FileText },
-    { id: "section-2", title: "2. Risk Indicators", icon: AlertTriangle },
-    { id: "section-3", title: "3. Source Usage Locations", icon: Code2 },
-    { id: "section-4", title: "4. AI Migration Recommendation", icon: Sparkles },
-    { id: "section-5", title: "5. Migration Plan & Diff", icon: GitCompare },
-    { id: "section-6", title: "6. Baseline Execution Evidence", icon: Terminal },
-    { id: "section-7", title: "7. Candidate Execution Evidence", icon: Terminal },
-    { id: "section-8", title: "8. Compatibility Gaps", icon: ShieldAlert },
-    { id: "section-9", title: "9. Remaining Limitations", icon: HelpCircle },
-  ]
-
   const ver = capsule.verification
   const plan = ver.plan
   const baseline = ver.baseline
   const candidate = ver.candidate
+
+  const handleCopyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(capsule, null, 2))
+      setCopiedJson(true)
+      setTimeout(() => setCopiedJson(false), 2000)
+    } catch {
+      // fallback
+    }
+  }
 
   return (
     <div className="space-y-6 pb-16">
@@ -61,7 +71,7 @@ export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps)
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-[#567C8D] dark:text-[#7DD3FC]">
-                Official Report
+                Audit Certificate
               </span>
               <Badge variant="outline" className="text-[10px] font-mono">
                 Schema {capsule.schema_version}
@@ -77,11 +87,30 @@ export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps)
 
           <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyJson}
+              className="gap-1.5 text-xs"
+            >
+              {copiedJson ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Copied JSON</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Copy JSON</span>
+                </>
+              )}
+            </Button>
+            <Button
               onClick={onOpenExport}
-              className="gap-2 shadow-xs"
+              size="sm"
+              className="gap-1.5 text-xs shadow-xs"
             >
               <Download size={14} />
-              <span>Download Report</span>
+              <span>Export Report</span>
             </Button>
           </div>
         </div>
@@ -90,7 +119,9 @@ export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps)
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
           <div>
             <span className="text-[var(--muted-foreground)] text-[11px] block">Generated At</span>
-            <span className="text-[var(--foreground)]">{new Date(capsule.generated_at).toLocaleString()}</span>
+            <span className="text-[var(--foreground)]">
+              {new Date(capsule.generated_at).toLocaleString()}
+            </span>
           </div>
           <div>
             <span className="text-[var(--muted-foreground)] text-[11px] block">Verification Verdict</span>
@@ -103,378 +134,325 @@ export function ExitCapsulePage({ capsule, onOpenExport }: ExitCapsulePageProps)
                   : "text-[var(--foreground)]"
               }
             >
-              {ver.verdict}
+              {ver.verdict.toUpperCase().replace(/_/g, " ")}
             </span>
           </div>
           <div>
             <span className="text-[var(--muted-foreground)] text-[11px] block">AI Analysis Status</span>
-            <span className="text-[#2F4156] dark:text-[#A5C2FF] font-semibold uppercase">{capsule.ai_status}</span>
+            <span className="text-[#2F4156] dark:text-[#A5C2FF] font-semibold uppercase">
+              {capsule.ai_status}
+            </span>
           </div>
           <div>
-            <span className="text-[var(--muted-foreground)] text-[11px] block">Total Evidence Items</span>
-            <span className="text-[var(--foreground)]">{capsule.evidence.length} audited items</span>
+            <span className="text-[var(--muted-foreground)] text-[11px] block">Audited Evidence</span>
+            <span className="text-[var(--foreground)] font-semibold">
+              {capsule.evidence.length} evidence items
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Grid: Sticky Sidebar Nav + 9 Report Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Sticky Table of Contents */}
-        <div className="lg:col-span-3 space-y-2 sticky top-20 hidden lg:block">
-          <div className="text-xs font-semibold text-[var(--muted-foreground)] px-2 uppercase tracking-wider">
-            Report Sections
-          </div>
-          <nav className="space-y-1">
-            {sections.map((sec) => {
-              const Icon = sec.icon
-              const isActive = activeSection === sec.id
-              return (
-                <a
-                  key={sec.id}
-                  href={`#${sec.id}`}
-                  onClick={() => setActiveSection(sec.id)}
-                  className={`flex items-center gap-2 px-3 py-2 text-xs rounded-lg transition-colors cursor-pointer ${
-                    isActive
-                      ? "bg-[var(--card)] text-[var(--foreground)] font-semibold border border-[var(--border)] shadow-xs"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)] hover:bg-[var(--muted)]/50"
-                  }`}
-                >
-                  <Icon size={13} className={isActive ? "text-[#567C8D] dark:text-[#7DD3FC]" : "text-[var(--muted-foreground)]"} />
-                  <span className="truncate">{sec.title}</span>
-                </a>
-              )
-            })}
-          </nav>
-        </div>
+      {/* Tabs View Switcher */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList>
+          <TabsTrigger value="structured">Structured Audit Report</TabsTrigger>
+          <TabsTrigger value="evidence">Evidence & Provenance ({capsule.evidence.length})</TabsTrigger>
+          <TabsTrigger value="raw">Raw Capsule JSON</TabsTrigger>
+        </TabsList>
 
-        {/* Right 9 Content Sections */}
-        <div className="lg:col-span-9 space-y-8">
-          {/* SECTION 1: Dependency Details */}
-          <section id="section-1" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <FileText size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">1. Dependency Details</h2>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {capsule.dependencies.length} declarations
-              </Badge>
-            </div>
-
-            <div className="space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                {capsule.dependencies.map((dep, idx) => (
-                  <div
-                    key={idx}
-                    className="p-3 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 text-xs font-mono space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-[var(--foreground)]">{dep.package}</span>
-                      <span className="text-[10px] text-[var(--muted-foreground)] uppercase">{dep.group}</span>
+        {/* TAB 1: Structured Audit Report */}
+        <TabsContent value="structured" className="space-y-6">
+          <Accordion type="multiple" defaultValue={["sec-deps", "sec-risks", "sec-rec", "sec-ver"]}>
+            {/* 1. Declared Dependencies */}
+            <AccordionItem value="sec-deps">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[var(--accent-teal)]" />
+                  <span>1. Declared Dependencies ({capsule.dependencies.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 pt-2">
+                  {capsule.dependencies.map((dep, i) => (
+                    <div
+                      key={i}
+                      className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 font-mono text-xs space-y-0.5"
+                    >
+                      <div className="flex justify-between font-bold text-[var(--foreground)]">
+                        <span>{dep.package}</span>
+                        <span className="text-[10px] text-[var(--muted-foreground)]">{dep.group}</span>
+                      </div>
+                      <div className="text-[11px] text-[#2F4156] dark:text-[#A5C2FF]">
+                        {dep.raw}
+                      </div>
+                      <div className="text-[10px] text-[var(--muted-foreground)]">
+                        {dep.source.file}:{dep.source.line || 1}
+                      </div>
                     </div>
-                    <div className="text-[11px] text-[#2F4156] dark:text-[#A5C2FF] font-medium">{dep.raw}</div>
-                    <div className="text-[10px] text-[var(--muted-foreground)]">
-                      Source: {dep.source.file}:{dep.source.line || 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
 
-          {/* SECTION 2: Risk Indicators */}
-          <section id="section-2" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <AlertTriangle size={16} className="text-amber-500" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">2. Risk Indicators</h2>
-              </div>
-              <Badge variant="warning" className="text-[10px] font-mono">
-                {capsule.risks.length} findings
-              </Badge>
-            </div>
-
-            <div className="space-y-3">
-              {capsule.risks.length === 0 ? (
-                <p className="text-xs text-[var(--muted-foreground)]">No risks detected by static checks.</p>
-              ) : (
-                capsule.risks.map((risk, idx) => (
-                  <div
-                    key={idx}
-                    className="p-4 rounded-lg border border-[var(--border)] bg-[var(--card)] space-y-2 text-xs shadow-xs"
-                  >
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-2 font-mono">
-                        <span className="font-bold text-[var(--foreground)]">{risk.package}</span>
+            {/* 2. Risk Indicators */}
+            <AccordionItem value="sec-risks">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <span>2. Risk Indicators ({capsule.risks.length} findings)</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2 pt-2">
+                  {capsule.risks.map((risk, i) => (
+                    <div
+                      key={i}
+                      className="p-3 rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)]/40 text-xs font-mono space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[var(--status-error-text)]">
+                          {risk.package} &bull; {risk.kind}
+                        </span>
                         <Badge variant="conflict" className="text-[10px]">
-                          {risk.kind}
-                        </Badge>
-                        <Badge variant="secondary" className="text-[10px]">
                           {risk.certainty}
                         </Badge>
                       </div>
-                      <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
-                        {risk.sources.map((s) => `${s.file}:${s.line || 1}`).join(", ")}
-                      </span>
-                    </div>
-                    <p className="text-xs font-mono leading-relaxed bg-[var(--code-bg)] text-[var(--code-text)] p-2 rounded border border-[var(--code-border)]">
-                      {risk.evidence}
-                    </p>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
-
-          {/* SECTION 3: Source Usage Locations */}
-          <section id="section-3" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Code2 size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">3. Source Usage Locations</h2>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {capsule.usages.length} AST sites
-              </Badge>
-            </div>
-
-            <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
-              {capsule.usages.map((u, idx) => (
-                <div
-                  key={idx}
-                  className="p-2.5 rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 text-xs font-mono flex items-center justify-between"
-                >
-                  <div>
-                    <span className="text-[#2F4156] dark:text-[#A5C2FF] font-semibold">{u.symbol}</span>
-                    <span className="text-[var(--muted-foreground)] ml-2">({u.kind} · {u.mapping})</span>
-                  </div>
-                  <span className="text-[var(--muted-foreground)] text-[11px]">
-                    {u.source.file}:{u.source.line || 1}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* SECTION 4: AI Migration Recommendation */}
-          <section id="section-4" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Sparkles size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">4. AI Migration Recommendation</h2>
-              </div>
-              <Badge variant="indigo" className="text-[10px] font-mono">
-                Gemma 4 IT
-              </Badge>
-            </div>
-
-            {capsule.recommendations.length === 0 ? (
-              <p className="text-xs text-[var(--muted-foreground)]">No AI recommendations requested for this scan.</p>
-            ) : (
-              capsule.recommendations.map((rec, idx) => (
-                <div key={idx} className="space-y-4 text-xs">
-                  <div className="flex items-center justify-between font-mono p-3 rounded-lg bg-[var(--muted)]/50 border border-[var(--border)]">
-                    <div>
-                      <span className="text-[var(--muted-foreground)]">Target Package:</span>{" "}
-                      <span className="font-bold text-[var(--foreground)]">{rec.package}</span>
-                    </div>
-                    <div>
-                      <span className="text-[var(--muted-foreground)]">Proposed:</span>{" "}
-                      <span className="font-bold text-[#2F4156] dark:text-[#A5C2FF]">{rec.replacement}</span>
-                    </div>
-                  </div>
-
-                  {rec.risk_explanation && (
-                    <div className="space-y-1">
-                      <span className="text-[var(--foreground)] font-semibold">Risk Explanation:</span>
-                      <p className="text-[var(--muted-foreground)] leading-relaxed font-sans">{rec.risk_explanation}</p>
-                    </div>
-                  )}
-
-                  {rec.migration_steps.length > 0 && (
-                    <div className="space-y-2">
-                      <span className="text-[var(--foreground)] font-semibold">Recommended Steps:</span>
-                      <ol className="list-decimal pl-5 space-y-1 text-[var(--foreground)] font-sans">
-                        {rec.migration_steps.map((s, si) => (
-                          <li key={si}>{s}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </section>
-
-          {/* SECTION 5: Migration Plan & Unified Diff */}
-          <section id="section-5" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <GitCompare size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">5. Migration Plan & Unified Diff</h2>
-              </div>
-              {plan && (
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  {plan.dependency} → {plan.target}
-                </Badge>
-              )}
-            </div>
-
-            {plan ? (
-              <div className="space-y-3">
-                <CodeBlock
-                  code={plan.unified_diff}
-                  title="Manifest Unified Diff"
-                  language="diff"
-                  maxHeight="max-h-72"
-                />
-
-                {plan.edits.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <span className="text-xs font-semibold text-[var(--foreground)]">Manifest Edits:</span>
-                    {plan.edits.map((edit, ei) => (
-                      <div
-                        key={ei}
-                        className="p-3 rounded-lg border border-[var(--border)] bg-[var(--card)] text-xs font-mono space-y-1 shadow-xs"
-                      >
-                        <div className="flex items-center justify-between text-[var(--foreground)]">
-                          <span className="font-bold text-[#2F4156] dark:text-[#A5C2FF]">{edit.file}</span>
-                          <span className="text-[10px] text-[var(--muted-foreground)]">
-                            sha:{edit.before_sha256.slice(0, 10)}…
-                          </span>
-                        </div>
-                        <div className="text-rose-600 dark:text-rose-400 font-semibold">- {edit.before}</div>
-                        <div className="text-emerald-600 dark:text-emerald-400 font-semibold">+ {edit.after}</div>
+                      <div className="text-[11px] text-[var(--foreground)] opacity-90">
+                        {risk.evidence}
                       </div>
-                    ))}
+                      <div className="text-[10px] text-[var(--muted-foreground)]">
+                        Sources: {risk.sources.map((s) => `${s.file}:${s.line || 1}`).join(", ")}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 3. Source Usage Locations */}
+            <AccordionItem value="sec-usages">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <Code2 className="h-4 w-4 text-[var(--accent-teal)]" />
+                  <span>3. AST Import & Usage Inventory ({capsule.usages.length} sites)</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ScrollArea maxHeight="280px" className="space-y-1.5 pt-2">
+                  {capsule.usages.map((u, i) => (
+                    <div
+                      key={i}
+                      className="p-2 rounded border border-[var(--border)] bg-[var(--muted)]/40 text-xs font-mono flex items-center justify-between"
+                    >
+                      <div>
+                        <span className="font-bold text-[var(--foreground)]">{u.symbol}</span>
+                        <span className="text-[10px] text-[var(--muted-foreground)] ml-2">
+                          (module: {u.module} &bull; {u.mapping})
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[var(--muted-foreground)]">
+                        {u.source.file}:{u.source.line || "?"}
+                      </div>
+                    </div>
+                  ))}
+                </ScrollArea>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 4. AI Migration Recommendations */}
+            <AccordionItem value="sec-rec">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-[var(--accent-teal)]" />
+                  <span>4. Gemma 4 Migration Recommendations ({capsule.recommendations.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 pt-2">
+                  {capsule.recommendations.map((rec, i) => (
+                    <div
+                      key={i}
+                      className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] space-y-3 text-xs"
+                    >
+                      <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
+                        <span className="font-bold font-mono text-sm text-[var(--foreground)]">
+                          {rec.package} → {rec.replacement || "(none)"}
+                        </span>
+                        <Badge variant="indigo" className="text-[10px]">
+                          Unverified AI Hypothesis
+                        </Badge>
+                      </div>
+
+                      {rec.risk_explanation && (
+                        <p className="text-xs text-[var(--foreground)] leading-relaxed">
+                          <strong>Risk:</strong> {rec.risk_explanation}
+                        </p>
+                      )}
+
+                      {rec.migration_steps.length > 0 && (
+                        <div>
+                          <span className="font-semibold block mb-1">Recommended Sequence:</span>
+                          <ol className="list-decimal pl-4 space-y-1 text-[11px] text-[var(--foreground)]">
+                            {rec.migration_steps.map((step, idx) => (
+                              <li key={idx}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {rec.limitations.length > 0 && (
+                        <div className="pt-2 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)]">
+                          <strong>Limitations:</strong> {rec.limitations.join(" ")}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 5. Verification Laboratory Outcomes */}
+            <AccordionItem value="sec-ver">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <GitCompare className="h-4 w-4 text-[var(--accent-teal)]" />
+                  <span>5. Empirical Verification Laboratory Outcomes</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-3 pt-2 text-xs">
+                  <div className="p-3 rounded-lg border border-[var(--status-error-border)] bg-[var(--status-error-bg)]/40 font-mono space-y-1">
+                    <div className="font-bold text-[var(--status-error-text)]">
+                      Overall Verdict: {ver.verdict.toUpperCase()}
+                    </div>
+                    <div className="text-[11px] text-[var(--foreground)]">{ver.reason}</div>
                   </div>
+
+                  {ver.comparisons.length > 0 && (
+                    <div className="space-y-1.5">
+                      <span className="font-semibold text-xs block text-[var(--foreground)]">
+                        Check Comparisons ({ver.comparisons.length})
+                      </span>
+                      {ver.comparisons.map((c, i) => (
+                        <div
+                          key={i}
+                          className="p-2 rounded border border-[var(--border)] bg-[var(--muted)]/40 font-mono text-xs flex items-center justify-between"
+                        >
+                          <span>{c.check}</span>
+                          <Badge
+                            variant={c.status === "regression" ? "conflict" : "secondary"}
+                            className="text-[10px]"
+                          >
+                            {c.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 6. Limitations & Caveats */}
+            <AccordionItem value="sec-limitations">
+              <AccordionTrigger>
+                <div className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-[var(--muted-foreground)]" />
+                  <span>6. Methodological Limitations ({capsule.limitations.length})</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <ul className="list-disc pl-5 space-y-1.5 text-xs text-[var(--muted-foreground)] pt-2 leading-relaxed">
+                  {capsule.limitations.map((lim, i) => (
+                    <li key={i}>{lim}</li>
+                  ))}
+                </ul>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </TabsContent>
+
+        {/* TAB 2: Evidence & Provenance */}
+        <TabsContent value="evidence" className="space-y-4">
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-2">
+            <h3 className="text-sm font-semibold text-[var(--foreground)] flex items-center gap-2">
+              <Cpu className="h-4 w-4 text-[var(--accent-teal)]" />
+              Audited Evidence Provenance
+            </h3>
+            <p className="text-xs text-[var(--muted-foreground)]">
+              SHA-256 anchored excerpts captured during AST scanning and runtime testing.
+            </p>
+          </div>
+
+          <div className="space-y-2.5">
+            {capsule.evidence.map((ev) => (
+              <div
+                key={ev.id}
+                className="p-3.5 rounded-lg border border-[var(--border)] bg-[var(--card)] space-y-2 text-xs shadow-xs"
+              >
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 font-mono">
+                    <span className="font-bold text-[var(--foreground)]">{ev.id}</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {ev.kind}
+                    </Badge>
+                    <span className="text-[var(--muted-foreground)]">{ev.package}</span>
+                  </div>
+                  {ev.source && (
+                    <span className="text-[10px] text-[var(--muted-foreground)] font-mono">
+                      {ev.source.file}:{ev.source.line || 1}
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-xs text-[var(--foreground)] leading-relaxed">
+                  {ev.description}
+                </p>
+
+                {ev.excerpt && (
+                  <CodeBlock
+                    code={ev.excerpt}
+                    language="python"
+                    maxHeight="max-h-36"
+                    title={`Excerpt (${ev.excerpt_sha256?.substring(0, 12)}...)`}
+                  />
                 )}
               </div>
-            ) : (
-              <p className="text-xs text-[var(--muted-foreground)]">No migration plan or diff available in capsule.</p>
-            )}
-          </section>
+            ))}
+          </div>
+        </TabsContent>
 
-          {/* SECTION 6: Baseline Execution Evidence */}
-          <section id="section-6" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Terminal size={16} className="text-[var(--muted-foreground)]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">6. Baseline Execution Evidence</h2>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {baseline?.commands.length || 0} commands
-              </Badge>
-            </div>
-
-            {baseline ? (
-              <div className="space-y-3">
-                <div className="text-xs font-mono text-[var(--muted-foreground)]">
-                  Python Version: <code className="text-[var(--foreground)] font-bold">{baseline.python_version}</code> · Installed: {Object.keys(baseline.installed_packages).length} packages
-                </div>
-                {baseline.commands.map((cmd) => (
-                  <CodeBlock
-                    key={cmd.check}
-                    code={cmd.stdout || cmd.stderr || "(no output)"}
-                    title={`Check: ${cmd.check} (exit: ${cmd.exit_code}, duration: ${cmd.duration_ms.toFixed(0)}ms)`}
-                    badge={cmd.status}
-                    maxHeight="max-h-40"
-                    collapsible
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--muted-foreground)]">Baseline execution not run.</p>
-            )}
-          </section>
-
-          {/* SECTION 7: Candidate Execution Evidence */}
-          <section id="section-7" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <Terminal size={16} className="text-[#567C8D] dark:text-[#7DD3FC]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">7. Candidate Execution Evidence</h2>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {candidate?.commands.length || 0} commands
-              </Badge>
-            </div>
-
-            {candidate ? (
-              <div className="space-y-3">
-                <div className="text-xs font-mono text-[var(--muted-foreground)]">
-                  Python Version: <code className="text-[var(--foreground)] font-bold">{candidate.python_version}</code> · Installed: {Object.keys(candidate.installed_packages).length} packages
-                </div>
-                {candidate.commands.map((cmd) => (
-                  <CodeBlock
-                    key={cmd.check}
-                    code={cmd.stdout || cmd.stderr || "(no output)"}
-                    title={`Check: ${cmd.check} (exit: ${cmd.exit_code}, duration: ${cmd.duration_ms.toFixed(0)}ms)`}
-                    badge={cmd.status}
-                    maxHeight="max-h-40"
-                    collapsible
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--muted-foreground)]">Candidate execution not run.</p>
-            )}
-          </section>
-
-          {/* SECTION 8: Compatibility Gaps */}
-          <section id="section-8" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <ShieldAlert size={16} className="text-rose-500" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">8. Compatibility Gaps & Unresolved Risks</h2>
-              </div>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              {ver.compatibility_gaps.length > 0 && (
-                <div className="space-y-1.5">
-                  <span className="font-semibold text-rose-600 dark:text-rose-400">Observed Gaps:</span>
-                  <ul className="list-disc pl-5 space-y-1 text-[var(--foreground)] font-sans">
-                    {ver.compatibility_gaps.map((gap, i) => (
-                      <li key={i}>{gap}</li>
-                    ))}
-                  </ul>
-                </div>
+        {/* TAB 3: Raw Capsule JSON */}
+        <TabsContent value="raw" className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+            <span>Machine-readable Exit Capsule payload (schema version 1.0)</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyJson}
+              className="h-7 text-xs gap-1.5"
+            >
+              {copiedJson ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-emerald-500" />
+                  <span>Copied</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>Copy Payload</span>
+                </>
               )}
+            </Button>
+          </div>
 
-              {ver.unresolved_risks.length > 0 && (
-                <div className="space-y-1.5 pt-2">
-                  <span className="font-semibold text-amber-600 dark:text-amber-400">Unresolved Risks:</span>
-                  <ul className="list-disc pl-5 space-y-1 text-[var(--foreground)] font-sans">
-                    {ver.unresolved_risks.map((risk, i) => (
-                      <li key={i}>{risk}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* SECTION 9: Remaining Limitations */}
-          <section id="section-9" className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-6 space-y-4 shadow-xs transition-colors">
-            <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-              <div className="flex items-center gap-2">
-                <HelpCircle size={16} className="text-[var(--muted-foreground)]" />
-                <h2 className="text-sm font-bold text-[var(--foreground)]">9. Remaining Analysis Limitations</h2>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-mono">
-                {capsule.limitations.length} items
-              </Badge>
-            </div>
-
-            <ul className="list-disc pl-5 space-y-2 text-xs text-[var(--muted-foreground)] font-sans leading-relaxed">
-              {capsule.limitations.map((lim, idx) => (
-                <li key={idx}>{lim}</li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      </div>
+          <ScrollArea maxHeight="500px">
+            <pre className="font-mono text-[11px] leading-relaxed text-[var(--foreground)] select-all whitespace-pre-wrap">
+              {JSON.stringify(capsule, null, 2)}
+            </pre>
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

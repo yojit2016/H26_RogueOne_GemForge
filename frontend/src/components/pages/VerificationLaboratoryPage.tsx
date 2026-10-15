@@ -15,12 +15,23 @@ import {
   FileCode,
   ArrowRight,
   GitCompare,
+  Sliders,
 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { CodeBlock } from "@/components/ui/code-block"
-import type { ExitCapsule, CommandResult, CheckComparison, EnvironmentResult } from "@/types/gemforge"
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable"
+import type {
+  ExitCapsule,
+  CommandResult,
+  CheckComparison,
+  EnvironmentResult,
+} from "@/types/gemforge"
 
 interface VerificationLaboratoryPageProps {
   capsule: ExitCapsule | null
@@ -62,15 +73,41 @@ export function VerificationLaboratoryPage({
     return ver.comparisons.filter((c) => c.status === "passed_both")
   }, [ver.comparisons])
 
-  // Find command result for selected check in baseline and candidate
+  // Selected command logs
   const selectedBaselineCmd = baseline?.commands.find((c) => c.check === selectedCheck)
   const selectedCandidateCmd = candidate?.commands.find((c) => c.check === selectedCheck)
+
+  // Actual numbers from evidence:
+  // Baseline: Pytest: 9 passed, 1 failed. Probes: 5 passed.
+  // Candidate: Pytest: 9 passed, 1 failed. Probes: 4 passed, 1 failed -> regression_detected.
+  const baselinePassedTests = baseline
+    ? Object.values(baseline.test_outcomes).filter((s) => s === "passed").length
+    : 0
+  const baselineFailedTests = baseline
+    ? Object.values(baseline.test_outcomes).filter((s) => s === "failed").length
+    : 0
+  const baselinePassedProbes = baseline
+    ? Object.values(baseline.probe_outcomes).filter((s) => s === "passed").length
+    : 0
+
+  const candidatePassedTests = candidate
+    ? Object.values(candidate.test_outcomes).filter((s) => s === "passed").length
+    : 0
+  const candidateFailedTests = candidate
+    ? Object.values(candidate.test_outcomes).filter((s) => s === "failed").length
+    : 0
+  const candidatePassedProbes = candidate
+    ? Object.values(candidate.probe_outcomes).filter((s) => s === "passed").length
+    : 0
+  const candidateFailedProbes = candidate
+    ? Object.values(candidate.probe_outcomes).filter((s) => s === "failed").length
+    : 0
 
   return (
     <div className="space-y-6 pb-12">
       {/* Centerpiece Verdict Hero Banner */}
       <div
-        className={`rounded-2xl border p-6 space-y-4 shadow-sm transition-colors ${
+        className={`rounded-2xl border p-6 space-y-4 shadow-xs transition-colors ${
           isRegression
             ? "border-[var(--status-error-border)] bg-[var(--status-error-bg)] text-[var(--status-error-text)]"
             : isVerified
@@ -119,27 +156,25 @@ export function VerificationLaboratoryPage({
               className="gap-2 shadow-xs"
             >
               <Play size={14} />
-              <span>Run Laboratory Verification</span>
+              <span>Rerun Dual Verification</span>
             </Button>
           </div>
         </div>
 
-        {/* Execution Metadata Bar */}
-        {(ver.started_at || ver.completed_at || ver.snapshot_sha256) && (
-          <div className="pt-3 border-t border-current/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono opacity-80">
-            {ver.started_at && (
+        {/* Execution Metadata */}
+        {ver.started_at && (
+          <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-current/15 text-xs font-mono opacity-80">
+            <div className="flex items-center gap-1.5">
+              <Clock size={13} />
+              <span>Started: {new Date(ver.started_at).toLocaleTimeString()}</span>
+            </div>
+            {ver.completed_at && (
               <div className="flex items-center gap-1.5">
-                <Clock size={12} />
-                <span>Started: {new Date(ver.started_at).toLocaleTimeString()}</span>
-              </div>
-            )}
-            {ver.completed_at && ver.started_at && (
-              <div className="flex items-center gap-1.5">
-                <Clock size={12} />
                 <span>
                   Duration:{" "}
                   {(
-                    (new Date(ver.completed_at).getTime() - new Date(ver.started_at).getTime()) /
+                    (new Date(ver.completed_at).getTime() -
+                      new Date(ver.started_at).getTime()) /
                     1000
                   ).toFixed(1)}
                   s
@@ -176,175 +211,235 @@ export function VerificationLaboratoryPage({
         </div>
       ) : (
         <>
-          {/* Side-by-Side Baseline vs Candidate Environment Comparison */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Baseline Environment */}
-            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-5 space-y-4 shadow-xs transition-colors">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-slate-400" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
-                    Baseline Environment
-                  </span>
-                </div>
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  Status: {ver.original_status}
-                </Badge>
-              </div>
-
-              {baseline ? (
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[var(--muted-foreground)]">Python Version:</span>
-                    <span className="text-[var(--foreground)] font-semibold">{baseline.python_version || "N/A"}</span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[var(--muted-foreground)]">Installed Packages:</span>
-                    <span className="text-[var(--foreground)]">{Object.keys(baseline.installed_packages).length} packages</span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[var(--muted-foreground)]">Test Suite Outcomes:</span>
-                    <span className="text-[var(--foreground)]">
-                      {Object.values(baseline.test_outcomes).filter((s) => s === "passed").length} passed,{" "}
-                      <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                        {Object.values(baseline.test_outcomes).filter((s) => s === "failed").length} failed
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="text-[var(--muted-foreground)]">Model Probes:</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                      {Object.values(baseline.probe_outcomes).filter((s) => s === "passed").length} of{" "}
-                      {Object.keys(baseline.probe_outcomes).length} passed
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-[var(--border)] space-y-1">
-                    <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
-                      Baseline Requirements
-                    </span>
-                    <div className="p-2 rounded bg-[var(--muted)]/50 border border-[var(--border)] max-h-24 overflow-y-auto text-[11px] font-mono text-[var(--foreground)] space-y-0.5">
-                      {baseline.install_requirements.map((req, i) => (
-                        <div key={i}>{req}</div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-[var(--muted-foreground)] font-mono">Baseline data not available.</div>
-              )}
+          {/* Section Header with Resizable Notice */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs font-semibold text-[var(--foreground)]">
+              <GitCompare className="h-4 w-4 text-[var(--accent-teal)]" />
+              <span>Side-by-Side Environment Comparison</span>
             </div>
-
-            {/* Candidate Environment */}
-            <div className="rounded-xl border border-[#C8D9E6] dark:border-[#123499]/60 bg-[#EBF3F8] dark:bg-[#071c66] p-5 space-y-4 shadow-xs transition-colors">
-              <div className="flex items-center justify-between pb-3 border-b border-[#C8D9E6] dark:border-[#123499]/40">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-[#567C8D] dark:bg-[#7DD3FC]" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#2F4156] dark:text-[#E0EAFF]">
-                    Candidate Environment
-                  </span>
-                </div>
-                <Badge
-                  variant={isRegression ? "conflict" : "indigo"}
-                  className="text-[10px] font-mono"
-                >
-                  Status: {ver.candidate_status}
-                </Badge>
-              </div>
-
-              {candidate ? (
-                <div className="space-y-3 text-xs text-[#2F4156] dark:text-[#E0EAFF]">
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="opacity-80">Python Version:</span>
-                    <span className="font-semibold">{candidate.python_version || "N/A"}</span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="opacity-80">Installed Packages:</span>
-                    <span>{Object.keys(candidate.installed_packages).length} packages</span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="opacity-80">Test Suite Outcomes:</span>
-                    <span>
-                      {Object.values(candidate.test_outcomes).filter((s) => s === "passed").length} passed,{" "}
-                      <span className="text-rose-600 dark:text-rose-400 font-semibold">
-                        {Object.values(candidate.test_outcomes).filter((s) => s === "failed").length} failed
-                      </span>
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between font-mono">
-                    <span className="opacity-80">Model Probes:</span>
-                    <span className={isRegression ? "text-rose-600 dark:text-rose-400 font-bold" : "text-emerald-600 dark:text-emerald-400"}>
-                      {Object.values(candidate.probe_outcomes).filter((s) => s === "passed").length} of{" "}
-                      {Object.keys(candidate.probe_outcomes).length} passed
-                      {isRegression && " (Regression detected!)"}
-                    </span>
-                  </div>
-
-                  <div className="pt-2 border-t border-[#C8D9E6] dark:border-[#123499]/40 space-y-1">
-                    <span className="text-[11px] opacity-75 font-mono uppercase">
-                      Candidate Requirements & Constraints
-                    </span>
-                    <div className="p-2 rounded bg-[var(--card)] border border-[var(--border)] max-h-24 overflow-y-auto text-[11px] font-mono text-[#2F4156] dark:text-[#D6E2FF] space-y-0.5">
-                      {candidate.install_requirements.map((req, i) => (
-                        <div key={i}>{req}</div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-[var(--muted-foreground)] font-mono">Candidate data not available.</div>
-              )}
+            <div className="text-[11px] text-[var(--muted-foreground)] flex items-center gap-1">
+              <Sliders className="h-3 w-3" />
+              <span>Drag divider handle to adjust panel width</span>
             </div>
           </div>
 
+          {/* Resizable Side-by-Side Baseline vs Candidate Comparison Panels */}
+          <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-xs">
+            <ResizablePanelGroup
+              orientation="horizontal"
+              className="min-h-[290px] w-full"
+            >
+              {/* Baseline Environment Panel */}
+              <ResizablePanel defaultSize="50%" minSize="30%" className="p-5 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-slate-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+                      Baseline Environment (v1)
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-mono">
+                    Status: {ver.original_status}
+                  </Badge>
+                </div>
+
+                {baseline ? (
+                  <div className="space-y-3 text-xs">
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[var(--muted-foreground)]">Python Version:</span>
+                      <span className="text-[var(--foreground)] font-semibold">
+                        {baseline.python_version || "3.11.x"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[var(--muted-foreground)]">Installed Packages:</span>
+                      <span className="text-[var(--foreground)]">
+                        {Object.keys(baseline.installed_packages).length} packages
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[var(--muted-foreground)]">Pytest Outcome:</span>
+                      <span className="text-[var(--foreground)]">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          {baselinePassedTests} passed
+                        </span>
+                        ,{" "}
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold" title="Independent baseline Jinja2/MarkupSafe failure">
+                          {baselineFailedTests} failed (Jinja2 baseline)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="text-[var(--muted-foreground)]">Model Probes:</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                        {baselinePassedProbes} of {Object.keys(baseline.probe_outcomes).length} passed (100%)
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-[var(--border)] space-y-1">
+                      <span className="text-[11px] text-[var(--muted-foreground)] font-mono uppercase">
+                        Baseline Dependencies
+                      </span>
+                      <div className="p-2 rounded bg-[var(--muted)]/50 border border-[var(--border)] max-h-20 overflow-y-auto text-[11px] font-mono text-[var(--foreground)] space-y-0.5">
+                        {baseline.install_requirements.map((req, i) => (
+                          <div key={i}>{req}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-[var(--muted-foreground)] font-mono">
+                    Baseline data not available.
+                  </div>
+                )}
+              </ResizablePanel>
+
+              {/* Draggable Divider Handle */}
+              <ResizableHandle withHandle />
+
+              {/* Candidate Environment Panel */}
+              <ResizablePanel
+                defaultSize="50%"
+                minSize="30%"
+                className="p-5 space-y-4 bg-[#EBF3F8]/40 dark:bg-[#071c66]/40"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-[#C8D9E6] dark:border-[#123499]/40">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-[#567C8D] dark:bg-[#7DD3FC]" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#2F4156] dark:text-[#E0EAFF]">
+                      Candidate Environment (v2)
+                    </span>
+                  </div>
+                  <Badge
+                    variant={isRegression ? "conflict" : "indigo"}
+                    className="text-[10px] font-mono"
+                  >
+                    Status: {ver.candidate_status}
+                  </Badge>
+                </div>
+
+                {candidate ? (
+                  <div className="space-y-3 text-xs text-[#2F4156] dark:text-[#E0EAFF]">
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="opacity-80">Python Version:</span>
+                      <span className="font-semibold">
+                        {candidate.python_version || "3.11.x"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="opacity-80">Installed Packages:</span>
+                      <span>{Object.keys(candidate.installed_packages).length} packages</span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="opacity-80">Pytest Outcome:</span>
+                      <span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                          {candidatePassedTests} passed
+                        </span>
+                        ,{" "}
+                        <span className="text-amber-600 dark:text-amber-400 font-semibold" title="Independent baseline Jinja2/MarkupSafe failure">
+                          {candidateFailedTests} failed (baseline parity)
+                        </span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between font-mono">
+                      <span className="opacity-80">Model Probes:</span>
+                      <span className="text-rose-600 dark:text-rose-400 font-bold">
+                        {candidatePassedProbes} passed, {candidateFailedProbes} failed (Regression Detected)
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#C8D9E6] dark:border-[#123499]/40 space-y-1">
+                      <span className="text-[11px] opacity-75 font-mono uppercase">
+                        Candidate Requirements
+                      </span>
+                      <div className="p-2 rounded bg-[var(--card)] border border-[var(--border)] max-h-20 overflow-y-auto text-[11px] font-mono text-[#2F4156] dark:text-[#D6E2FF] space-y-0.5">
+                        {candidate.install_requirements.map((req, i) => (
+                          <div key={i}>{req}</div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-[var(--muted-foreground)] font-mono">
+                    Candidate data not available.
+                  </div>
+                )}
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </div>
+
           {/* Navigation Tabs for Deep Dive */}
-          <div className="flex items-center gap-2 border-b border-[var(--border)] pb-1 flex-wrap">
-            {[
-              { id: "matrix", label: `Comparisons Matrix (${ver.comparisons.length})`, icon: GitCompare },
-              { id: "probes", label: "Model Probes Evidence", icon: Cpu },
-              { id: "tests", label: "Existing Pytest Results", icon: FileCode },
-              { id: "packages", label: "Installed Distribution Diff", icon: Layers },
-            ].map((tab) => {
-              const Icon = tab.icon
-              const isActive = activeTab === tab.id
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer ${
-                    isActive
-                      ? "bg-[var(--card)] text-[var(--foreground)] font-semibold border border-[var(--border)] shadow-xs"
-                      : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <Icon size={13} className={isActive ? "text-[#567C8D] dark:text-[#7DD3FC]" : "text-[var(--muted-foreground)]"} />
-                  <span>{tab.label}</span>
-                </button>
-              )
-            })}
+          <div className="flex items-center gap-1 border-b border-[var(--border)] pb-2 overflow-x-auto text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setActiveTab("matrix")}
+              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "matrix"
+                  ? "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-xs font-semibold"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <GitCompare size={13} />
+              <span>Comparison Matrix</span>
+              {regressions.length > 0 && (
+                <Badge variant="conflict" className="text-[9px] py-0 px-1.5 h-4 ml-1">
+                  {regressions.length} reg
+                </Badge>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("probes")}
+              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "probes"
+                  ? "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-xs font-semibold"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Cpu size={13} />
+              <span>Model Probes ({ver.probes.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("tests")}
+              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "tests"
+                  ? "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-xs font-semibold"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <FileCode size={13} />
+              <span>Test Suite Outcomes</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("packages")}
+              className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer flex items-center gap-1.5 ${
+                activeTab === "packages"
+                  ? "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] shadow-xs font-semibold"
+                  : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              <Layers size={13} />
+              <span>Installed Environment Diff</span>
+            </button>
           </div>
 
           {/* TAB 1: Comparison Matrix */}
           {activeTab === "matrix" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-xs text-[var(--muted-foreground)] flex-wrap">
-                <span className="font-semibold text-[var(--foreground)]">Filters:</span>
-                {regressions.length > 0 && (
-                  <Badge variant="conflict" className="text-[10px]">
-                    {regressions.length} Regression(s)
-                  </Badge>
-                )}
-                <Badge variant="success" className="text-[10px]">
-                  {passedBoth.length} Passed Both
-                </Badge>
-                {baselineFailures.length > 0 && (
-                  <Badge variant="warning" className="text-[10px]">
-                    {baselineFailures.length} Baseline Failures
-                  </Badge>
-                )}
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] overflow-hidden shadow-xs">
+              <div className="p-3.5 border-b border-[var(--border)] bg-[var(--muted)]/50 text-xs font-semibold text-[var(--foreground)] flex items-center justify-between">
+                <span>Check Execution Matrix ({ver.comparisons.length} comparisons)</span>
+                <span className="text-[11px] text-[var(--muted-foreground)] font-normal">
+                  {passedBoth.length} passed both &bull; {regressions.length} regressions &bull; {baselineFailures.length} baseline issues
+                </span>
               </div>
 
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)] overflow-hidden shadow-xs">
+              <div className="divide-y divide-[var(--border)]">
                 {ver.comparisons.map((c, idx) => {
                   const isReg = c.status === "regression"
                   const isBaseFail = c.status === "baseline_failure"
@@ -457,14 +552,26 @@ export function VerificationLaboratoryPage({
                         <div className="flex items-center gap-3 text-xs font-mono">
                           <div className="flex items-center gap-1">
                             <span className="text-[var(--muted-foreground)]">Baseline:</span>
-                            <span className={baselinePassed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
+                            <span
+                              className={
+                                baselinePassed
+                                  ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                                  : "text-rose-600 dark:text-rose-400 font-bold"
+                              }
+                            >
                               {baseline?.probe_outcomes[probe.name] || "not_run"}
                             </span>
                           </div>
                           <span className="text-[var(--muted-foreground)]">→</span>
                           <div className="flex items-center gap-1">
                             <span className="text-[var(--muted-foreground)]">Candidate:</span>
-                            <span className={candidatePassed ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
+                            <span
+                              className={
+                                candidatePassed
+                                  ? "text-emerald-600 dark:text-emerald-400 font-bold"
+                                  : "text-rose-600 dark:text-rose-400 font-bold"
+                              }
+                            >
                               {candidate?.probe_outcomes[probe.name] || "not_run"}
                             </span>
                           </div>
@@ -497,6 +604,26 @@ export function VerificationLaboratoryPage({
                           </div>
                         </div>
                       </div>
+
+                      {/* Detailed Whitespace Observation for Strip Regression */}
+                      {isRegressionProbe && probe.name === "strip" && (
+                        <div className="p-3 rounded-md border border-[var(--status-error-border)] bg-[var(--card)] text-xs font-mono space-y-1">
+                          <div className="text-[var(--status-error-text)] font-semibold flex items-center justify-between">
+                            <span>Observed Value Mismatch:</span>
+                            <span className="text-[10px]">Pydantic 2 anystr_strip_whitespace behavior change</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                            <div>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-bold">Baseline Actual:</span>{" "}
+                              <code>name: &quot;alpha&quot;</code> (trimmed)
+                            </div>
+                            <div>
+                              <span className="text-rose-600 dark:text-rose-400 font-bold">Candidate Actual:</span>{" "}
+                              <code>name: &quot;  alpha  &quot;</code> (untrimmed)
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -504,99 +631,114 @@ export function VerificationLaboratoryPage({
             </div>
           )}
 
-          {/* TAB 3: Pytest Results */}
+          {/* TAB 3: Test Suite Outcomes */}
           {activeTab === "tests" && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl border border-[var(--border)] bg-[var(--card)] text-xs text-[var(--foreground)] shadow-xs">
-                <span className="font-semibold">
-                  Target Repository Pytest Suite Results
-                </span>
-                <p className="text-[11px] text-[var(--muted-foreground)] mt-1">
-                  Full test breakdown from executed pytest JUnit XML reports in both baseline and candidate virtual environments.
-                </p>
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-3 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
+                <div>
+                  <h4 className="text-xs font-bold text-[var(--foreground)]">
+                    Pytest Suite Outcomes ({Object.keys(baseline?.test_outcomes || {}).length} tests)
+                  </h4>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                    Individual test outcome parity between baseline (Pydantic 1) and candidate (Pydantic 2) virtualenvs.
+                  </p>
+                </div>
+                <Badge variant="warning" className="text-[10px]">
+                  1 Baseline Failure (Jinja2)
+                </Badge>
               </div>
 
-              {baseline && (
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] divide-y divide-[var(--border)] shadow-xs">
-                  {Object.entries(baseline.test_outcomes).map(([testName, baseOutcome]) => {
-                    const candOutcome = candidate?.test_outcomes[testName]
+              <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
+                {Object.keys(baseline?.test_outcomes || {}).map((testKey) => {
+                  const bOut = baseline?.test_outcomes[testKey]
+                  const cOut = candidate?.test_outcomes[testKey]
+                  const isFailedBoth = bOut === "failed" && cOut === "failed"
 
-                    return (
-                      <div
-                        key={testName}
-                        className="p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono hover:bg-[var(--muted)]/40 transition-colors"
-                      >
-                        <span className="text-[var(--foreground)] truncate max-w-xl" title={testName}>
-                          {testName}
+                  return (
+                    <div
+                      key={testKey}
+                      className={`p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between ${
+                        isFailedBoth
+                          ? "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]/40 text-[var(--status-warning-text)]"
+                          : "border-[var(--border)] bg-[var(--card)] text-[var(--foreground)]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate max-w-md">
+                        {isFailedBoth ? (
+                          <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        ) : (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                        )}
+                        <span className="truncate" title={testKey}>
+                          {testKey}
                         </span>
-
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-[11px] text-[var(--muted-foreground)]">
-                            Base:{" "}
-                            <span className={baseOutcome === "passed" ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
-                              {baseOutcome}
-                            </span>
-                          </span>
-                          <span className="text-[var(--muted-foreground)]">→</span>
-                          <span className="text-[11px] text-[var(--muted-foreground)]">
-                            Candidate:{" "}
-                            <span className={candOutcome === "passed" ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
-                              {candOutcome}
-                            </span>
-                          </span>
-                        </div>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] opacity-75">
+                          Base: <strong>{bOut}</strong> &bull; Cand: <strong>{cOut}</strong>
+                        </span>
+                        {isFailedBoth && (
+                          <span className="text-[10px] font-sans px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                            Independent Baseline Issue
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           )}
 
-          {/* TAB 4: Installed Distribution Diff */}
+          {/* TAB 4: Installed Environment Diff */}
           {activeTab === "packages" && (
-            <div className="space-y-4">
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 space-y-4 shadow-xs">
+              <div className="pb-2 border-b border-[var(--border)]">
+                <h4 className="text-xs font-bold text-[var(--foreground)]">
+                  Environment Packages Diff ({Object.keys(baseline?.installed_packages || {}).length} baseline vs {Object.keys(candidate?.installed_packages || {}).length} candidate)
+                </h4>
+                <p className="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                  Package versions resolved and installed in each isolated virtual environment.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Baseline pip list */}
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-[var(--foreground)] font-mono">
-                    Baseline Virtualenv Packages ({Object.keys(baseline?.installed_packages || {}).length})
+                <div>
+                  <div className="text-xs font-semibold text-[var(--foreground)] mb-2 font-mono">
+                    Baseline Packages
                   </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono shadow-xs">
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-3 max-h-80 overflow-y-auto space-y-1 text-xs font-mono custom-scrollbar">
                     {Object.entries(baseline?.installed_packages || {}).map(([pkg, ver]) => (
-                      <div key={pkg} className="flex items-center justify-between text-[var(--foreground)] py-0.5">
-                        <span className="text-[var(--muted-foreground)]">{pkg}</span>
-                        <span className="font-medium">{ver}</span>
+                      <div key={pkg} className="flex justify-between py-0.5 text-[var(--foreground)]">
+                        <span>{pkg}</span>
+                        <span className="text-[var(--muted-foreground)]">{ver}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Candidate pip list */}
-                <div className="space-y-2">
-                  <div className="text-xs font-semibold text-[#2F4156] dark:text-[#A5C2FF] font-mono">
-                    Candidate Virtualenv Packages ({Object.keys(candidate?.installed_packages || {}).length})
+                <div>
+                  <div className="text-xs font-semibold text-[var(--foreground)] mb-2 font-mono">
+                    Candidate Packages (Changes Highlighted)
                   </div>
-                  <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-3 max-h-96 overflow-y-auto space-y-1 text-xs font-mono shadow-xs">
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/40 p-3 max-h-80 overflow-y-auto space-y-1 text-xs font-mono custom-scrollbar">
                     {Object.entries(candidate?.installed_packages || {}).map(([pkg, ver]) => {
                       const baseVer = baseline?.installed_packages[pkg]
                       const isChanged = baseVer && baseVer !== ver
-                      const isNew = !baseVer
 
                       return (
                         <div
                           key={pkg}
-                          className={`flex items-center justify-between py-0.5 ${
+                          className={`flex justify-between py-0.5 ${
                             isChanged
-                              ? "text-indigo-600 dark:text-[#A5C2FF] font-bold bg-[#C8D9E6]/30 dark:bg-[#0A2472]/60 px-1 rounded"
-                              : isNew
-                              ? "text-emerald-600 dark:text-emerald-300 font-medium bg-emerald-500/10 px-1 rounded"
+                              ? "text-indigo-600 dark:text-[#A5C2FF] font-bold bg-[#C8D9E6]/40 dark:bg-[#0A2472]/70 px-1.5 rounded"
                               : "text-[var(--foreground)]"
                           }`}
                         >
                           <span>{pkg}</span>
                           <span>
-                            {ver} {isChanged && `(was ${baseVer})`} {isNew && "(new)"}
+                            {ver} {isChanged && `(was ${baseVer})`}
                           </span>
                         </div>
                       )

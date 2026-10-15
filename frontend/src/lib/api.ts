@@ -9,8 +9,10 @@ import type {
   AnalysisResponse,
   ExitCapsule,
   HealthResponse,
+  RepairRequest,
   ScanRequest,
   VerificationRequest,
+  VerificationView,
 } from "@/types/gemforge"
 
 export class ApiError extends Error {
@@ -114,9 +116,40 @@ export const api = {
   },
 
   /**
+   * Import an existing capsule JSON without re-running verification or AI.
+   * Backed by POST /analyses/import per API contract.
+   */
+  async importAnalysis(capsule: ExitCapsule): Promise<AnalysisResponse> {
+    return request<AnalysisResponse>("/api/analyses/import", {
+      method: "POST",
+      body: JSON.stringify(capsule),
+    })
+  },
+
+  /**
+   * Retrieve detailed verification & probe observations view.
+   * Backed by GET /analyses/{id}/verification per API contract.
+   */
+  async getVerification(id: string): Promise<VerificationView> {
+    return request<VerificationView>(`/api/analyses/${encodeURIComponent(id)}/verification`)
+  },
+
+  /**
+   * Request repair suggestion for an unverified migration / regression.
+   * Backed by POST /repairs per API contract.
+   */
+  async requestRepair(req: RepairRequest): Promise<AnalysisResponse> {
+    return request<AnalysisResponse>("/api/repairs", {
+      method: "POST",
+      body: JSON.stringify(req),
+    })
+  },
+
+  /**
    * Get direct download URL for capsule export (JSON or Markdown)
    */
   getExportUrl(id: string, format: "json" | "markdown" = "json"): string {
     return `/api/analyses/${encodeURIComponent(id)}/export?format=${format}`
   },
 }
+
