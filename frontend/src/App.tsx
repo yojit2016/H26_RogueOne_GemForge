@@ -138,7 +138,7 @@ export default function App() {
         {(isHistorical || isDemoMode) && (
           <div className="mb-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-3 text-xs text-[var(--status-warning-text)]">
             {isDemoMode
-              ? "Historical LinkWatch demonstration fixture. These results are from a previous run, not a live repository scan."
+              ? "Historical LinkWatch demonstration fixture. These path-redacted results are from a previous run, not a live repository scan."
               : "Historical imported capsule. Its recorded results are from a previous run; importing did not rescan, rerun inference, or repeat verification."}
           </div>
         )}

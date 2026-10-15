@@ -85,7 +85,7 @@ rejected with HTTP 400. Importing performs no inference, source writes or target
 execution. It restores reported evidence; it does not independently attest that
 user-supplied test logs are genuine.
 
-Use this route to demonstrate the preserved
+Use this route to demonstrate the path-redacted public copy of the preserved
 `evidence/linkwatch/linkwatch-phase3.json` result after backend restart. Do not
 rerun `/verify` just to populate the dashboard.
 The cache still retains only the latest 20 capsules; restart/eviction yields 404.

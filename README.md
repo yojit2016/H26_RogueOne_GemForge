@@ -118,8 +118,8 @@ analysis is recorded in `limitations`. Risks do not change the exit code.
 # Preview a manifest-only verification plan; execution needs separate consent:
 .venv/Scripts/gemforge.exe verify targets/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
 
-# Preview repair evidence offline from a saved regression capsule:
-.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --json
+# Preview repair evidence offline from a path-redacted saved capsule:
+.venv/Scripts/gemforge.exe repair evidence/public/linkwatch/linkwatch-phase3.json --dependency pydantic --json
 ```
 
 `verify` without `--confirm-execution` is a preview and does not run the target.
@@ -400,13 +400,13 @@ See `PHASE3-VALIDATION.md` for the actual approved LinkWatch run.
 
 ## Evidence-grounded repair suggestions
 
-Use the preserved regression capsule to preview repair evidence without network
+Use the path-redacted public regression capsule to preview repair evidence without network
 requests, installations, source changes or target-code execution:
 
 ```powershell
-.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --json
+.venv/Scripts/gemforge.exe repair evidence/public/linkwatch/linkwatch-phase3.json --dependency pydantic --json
 # Real hosted suggestion, saved to NEW files:
-.venv/Scripts/gemforge.exe repair evidence/linkwatch/linkwatch-phase3.json --dependency pydantic --ai --allow-hosted --output capsules/repair-new.json --markdown capsules/repair-new.md
+.venv/Scripts/gemforge.exe repair evidence/public/linkwatch/linkwatch-phase3.json --dependency pydantic --ai --allow-hosted --output capsules/repair-new.json --markdown capsules/repair-new.md
 ```
 
 The shared engine sends selected matched source excerpts, actual probe results,
@@ -428,6 +428,13 @@ The Antigravity dashboard branch is integrated locally; its original commits
 remain reachable in the submission history. See
 [FRONTEND-INTEGRATION.md](FRONTEND-INTEGRATION.md) for the integrated frontend/API
 contract. The included dashboard fixture is not a fresh analysis.
+The public demo uses path-redacted evidence derivatives in
+`evidence/public/linkwatch/`; provenance and original/sanitized SHA-256 hashes
+are recorded in that directory. The raw originals under `evidence/linkwatch/`
+remain unchanged and contain historical absolute local paths. They are not
+sanitized; use only the public derivatives for sharing. Earlier commits retain
+the raw files, so this branch must not be published until the owner reviews and
+accepts that history exposure or authorizes a separate history-remediation plan.
 
 The first genuine hosted repair request confirmed model access but exhausted two
 generation attempts with HTTP 504 `DEADLINE_EXCEEDED`; its repair capsule records
