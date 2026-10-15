@@ -1,17 +1,76 @@
 # GemForge
 
-By **Rogue One** for Hacktoberfest 2026 Track 1 — Gemma 4: Dependency Resilience.
-Confirmed final repository name: `H26_RogueOne_GemForge`. Read-only Python
-dependency facts and evidence-grounded Gemma 4 migration hypotheses are exported
-as reusable JSON/Markdown Dependency Exit Capsules. Real Gemma 4 LinkWatch
-generation has succeeded after a bounded retry of an intermittent HTTP 500.
-Phase 3 adds explicit-consent baseline/candidate verification with temporary
-Python 3.12 environments, manifest-only edits and observed comparison evidence.
+**Rogue One · Hacktoberfest 2026 Track 1 — Gemma 4: Dependency Resilience**
+
+GemForge helps Python maintainers investigate dependency migration risk before
+changing application code. It reads manifests and Python source without running
+the scanned repository, identifies declaration conflicts and import usage,
+then exports a versioned **Dependency Exit Capsule** with evidence and limits.
+Optional hosted Gemma 4 analysis adds migration hypotheses; it does not replace
+observed facts or prove compatibility.
+
+The final intended submission name is `H26_RogueOne_GemForge`. This checkout is
+still a local development repository, not the approved public submission fork.
+Starter-fork provenance remains unresolved; see [SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md).
 
 Open `GemForge.code-workspace` for development. GemForge is the root repository;
 the ignored `.dist/LinkWatch` clone is only a scan target. Workspace settings keep
-that clone out of automatic Source Control discovery. See `REPOSITORIES.md` for
-the repository audit, Git ownership fix and unresolved starter-fork requirement.
+that clone out of automatic Source Control discovery. See [REPOSITORIES.md](REPOSITORIES.md)
+for repository boundaries and the starter-fork requirement.
+
+## Problem and approach
+
+Dependency scanners often report version ranges without showing where a package
+is used or whether a suggested upgrade changes behavior. GemForge connects
+manifest declarations, static import locations, bounded source evidence,
+optional AI hypotheses and explicitly approved baseline/candidate checks in one
+portable record. It distinguishes a metadata conflict from a demonstrated
+regression, and both from an unverified suggestion.
+
+## Features
+
+- Read-only Python manifest and AST import analysis with source locations.
+- Deterministic constraint assessments and explicit uncertainty/limitations.
+- Versioned JSON and Markdown capsules for sharing or importing prior results.
+- Optional evidence-grounded Gemma 4 migration hypotheses; no AI commands run.
+- Explicit-consent manifest-only baseline/candidate verification with recorded
+  versions, checks, comparisons and cleanup evidence.
+- Evidence-grounded, **unverified** source repair suggestions; never applied or
+  executed by GemForge.
+- Local FastAPI endpoints for scanning, analysis, capsule import/export,
+  verification views and repair suggestions.
+
+## Architecture
+
+```text
+repository manifests + Python source
+                 |
+     deterministic scanner (offline, read-only)
+                 |
+       typed facts + bounded evidence
+           /                 \
+ optional Gemma 4       explicit-consent
+ hypothesis             manifest-only checks
+           \                 /
+        Dependency Exit Capsule
+           /                 \
+       Typer CLI         local FastAPI
+```
+
+AI output is stored separately from scanner facts and execution results. A
+successful inference is not a compatibility result; a selected-check pass is
+not a universal safety verdict.
+
+## Technology stack
+
+- **Backend:** Python 3.12+, FastAPI, Pydantic, Typer, Rich, `packaging`,
+  `tomllib`, and Uvicorn.
+- **Hosted inference (optional):** Google GenAI Python SDK (`google-genai`) and
+  `python-dotenv`; no local model runtime is required.
+- **Frontend:** React, TypeScript and Vite, using Node.js 22.12+ (Node 24 also
+  works). The in-progress dashboard is maintained in its separate frontend
+  worktree and is not claimed as integrated in this backend checkout.
+- **Validation:** pytest and Ruff.
 
 ## Setup
 
@@ -44,6 +103,25 @@ Reports go to stderr and `--json` emits clean JSON on stdout. Export destination
 must be new files; existing files are never overwritten. Exit code 0 means the scan
 completed, not that dependencies are safe; 2 means input/export failure. Partial
 analysis is recorded in `limitations`. Risks do not change the exit code.
+
+## CLI commands
+
+```powershell
+# Analyze the repository offline (no hosted request):
+.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --json
+
+# Request the hosted Gemma 4 analysis; review public-data disclosure first:
+.venv/Scripts/gemforge.exe analyze .dist/LinkWatch --ai --allow-hosted --json --import-map dateutil=python-dateutil
+
+# Preview a manifest-only verification plan; execution needs separate consent:
+.venv/Scripts/gemforge.exe verify .dist/LinkWatch --dependency pydantic --target 'pydantic>=2,<3' --import-module linkwatch.config
+
+# Preview repair evidence offline from a saved regression capsule:
+.venv/Scripts/gemforge.exe repair capsules/linkwatch-phase3.json --dependency pydantic --json
+```
+
+`verify` without `--confirm-execution` is a preview and does not run the target.
+Read the command-specific `--help` before requesting execution or hosted inference.
 
 ## Local API and frontend
 
@@ -89,6 +167,36 @@ Observed manifests declare `pydantic==1.10.13` in requirements.txt and
 it contains no LinkWatch-specific risk rules. No package is labeled abandoned or
 vulnerable from its name/version alone.
 
+## Verified LinkWatch findings
+
+These results are from the recorded analysis and one approved verification run
+against LinkWatch commit
+`f52f3930c8e7c33d934ccf614955a38e26984bd5`; they are not claims about every
+installation profile or release.
+
+| Evidence | Observed result |
+| --- | --- |
+| Static scan | 26 dependency declarations, 14 normalized packages, 22 import/reference locations, and a proven Pydantic manifest conflict. |
+| Hosted Gemma 4 analysis | A real migration hypothesis was generated and structurally validated after a bounded retry. It proposed a Pydantic 2 migration; the suggestion itself was not proof of compatibility. |
+| Baseline/candidate | Pydantic 1.10.13 baseline versus 2.14.1 candidate; candidate changed only the Pydantic manifest constraints. |
+| Existing test suite | 9 passed and 1 failed in both environments. The same Jinja2/MarkupSafe report import failure occurred on both sides. |
+| Five reviewed probes | 4 passed and 1 regressed in the candidate: whitespace in a `Site` name was no longer stripped. |
+| Overall verdict | `regression_detected`; the candidate was not established as compatible. |
+| Later repair inference | The hosted request returned two HTTP 504 deadline failures. No model-generated repair was returned. |
+
+The failing whitespace behavior is an actual observed regression. An
+engineer-reviewed one-line configuration-key replacement is documented in
+[REPAIR-VALIDATION.md](REPAIR-VALIDATION.md), but remains **unverified,
+unapplied, and not a Gemma-generated suggestion**. No repaired code or test pass
+is claimed. The independent report failure must not be attributed to Pydantic.
+
+The full Python suite was rerun for this audit:
+`.venv/Scripts/python.exe -m pytest -q --basetemp .dist/pytest-submission-audit`
+reported **152 passed**. It emitted two warnings: the existing Starlette/httpx
+test-client deprecation and a pytest cache-directory access warning from this
+Windows environment. This is test-suite evidence, not a LinkWatch compatibility
+claim.
+
 ## Contracts and limitations
 
 - `gemforge.engine.scan_repository(path, import_map=None)` is shared by CLI and API.
@@ -130,6 +238,15 @@ LinkWatch excerpts. The default is `gemma-4-26b-a4b-it`, configurable through
 `GEMFORGE_MODEL`. Only Gemma 4 model IDs are accepted; there is no model substitution.
 Google documents hosted access through the official Google GenAI SDK:
 https://ai.google.dev/gemma/docs/core/gemma_on_gemini_api.
+
+The model identifier used is `gemma-4-26b-a4b-it`. The SDK sends hosted requests
+through Google's Gemini API Developer API (`google_genai_developer_api`); no
+separate numeric provider model-build version was recorded. Gemma's role is to
+propose evidence-cited migration hypotheses and, when requested, repair
+hypotheses. Scanner findings and compatibility outcomes are produced and stored
+separately. The initial real LinkWatch migration inference succeeded after a
+bounded retry using `google-genai` 2.31.0; the later repair-generation request
+did not succeed (see the verified results above).
 
 ```powershell
 # Once only: copy the template, then edit .env locally to set GEMINI_API_KEY.
@@ -289,6 +406,18 @@ generation attempts with HTTP 504 `DEADLINE_EXCEEDED`; its repair capsule record
 remain unchanged. See [REPAIR-VALIDATION.md](REPAIR-VALIDATION.md) for actual
 diagnostics and the separate, unverified engineer-reviewed minimal key rename.
 
+## Frontend integration and submission audit
+
+Use [FRONTEND-INTEGRATION.md](FRONTEND-INTEGRATION.md) for the current API routes,
+request shapes, capsule import flow, typed verification details, exports and
+error handling. It summarizes [API-CONTRACT.md](API-CONTRACT.md), the backend
+contract source of truth.
+
+The submission gate is not yet complete: the approved starter fork and public
+submission repository are absent, and no six-slide deck or rehearsed live
+demonstration was found in this checkout. See [SUBMISSION-AUDIT.md](SUBMISSION-AUDIT.md)
+for the checklist and evidence status.
+
 ## Remaining work / Phase 4
 
 1. Review the actual Gemma recommendation for semantic correctness before applying
@@ -300,8 +429,9 @@ diagnostics and the separate, unverified engineer-reviewed minimal key rename.
    expand import resolution and semantic recommendation checks.
 4. Improve frontend analysis/review/export flows after backend verification.
 
-MIT licensed. Submission metadata is recorded in `[tool.gemforge.submission]` in
-`pyproject.toml`; it is declarative metadata, not a publishing integration. The final
-repository must be public and named `H26_RogueOne_GemForge`. Creation and pushing
-remain disabled pending confirmation of the official starter-fork requirement.
-The local folder remains `GemForge`; no organizer fork history was present initially.
+MIT licensed; see [LICENSE](LICENSE). Submission metadata is recorded in
+`[tool.gemforge.submission]` in `pyproject.toml`; it is declarative metadata, not
+a publishing integration. The final repository must be public and named
+`H26_RogueOne_GemForge`. Creation and pushing remain disabled pending
+confirmation of the official starter-fork requirement. The local folder remains
+`GemForge`; no organizer fork history was present initially.
